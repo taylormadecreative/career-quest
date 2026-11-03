@@ -1,0 +1,18 @@
+{
+  "rows_read": 785741,
+  "duplicates_skipped": 36,
+  "eligible_before_sampling": {
+    "Data Analyst | Full-time": 48126,
+    "Data Analyst | Part-time": 597,
+    "Data Scientist | Full-time": 45179,
+    "Data Scientist | Part-time": 402,
+    "Research Analyst | Full-time": 266,
+    "Research Analyst | Part-time": 5
+  },
+  "sampled": {
+    "Data Analyst": 160,
+    "Data Scientist": 160,
+    "Research Analyst": 85
+  },
+  "total": 405
+}

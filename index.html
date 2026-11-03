@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self'; frame-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Career Quest: Code Your Next Move</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="description" content="A beginner Python game from the AUC Data Science Initiative: fix three tiny bugs, build your career portfolio.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='4' y='10' width='9' height='18' rx='2' fill='%23f9d544'/%3E%3Crect x='15' y='4' width='9' height='24' rx='2' fill='%230b66d6'/%3E%3Crect x='2' y='27' width='28' height='3' rx='1.5' fill='%230a933b'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/game.css">
+<script type="module" src="js/game.js"></script>
+</head>
+<body>
+<svg class="defs" width="0" height="0" aria-hidden="true" focusable="false"><defs>
+  <linearGradient id="g-sheen" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffdf6" stop-opacity=".5"/><stop offset=".36" stop-color="#fffdf6" stop-opacity=".06"/><stop offset=".7" stop-color="#0b1030" stop-opacity="0"/><stop offset="1" stop-color="#0b1030" stop-opacity=".18"/></linearGradient>
+  <linearGradient id="g-sheen-x" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fffdf6" stop-opacity=".26"/><stop offset=".22" stop-color="#fffdf6" stop-opacity="0"/><stop offset=".86" stop-color="#0b1030" stop-opacity="0"/><stop offset="1" stop-color="#0b1030" stop-opacity=".12"/></linearGradient>
+  <linearGradient id="g-side" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffdf6" stop-opacity=".14"/><stop offset="1" stop-color="#0b1030" stop-opacity=".26"/></linearGradient>
+  <linearGradient id="g-top" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffdf6" stop-opacity=".6"/><stop offset="1" stop-color="#fffdf6" stop-opacity=".08"/></linearGradient>
+  <linearGradient id="g-glass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fffdf6" stop-opacity=".9"/><stop offset=".42" stop-color="#fffdf6" stop-opacity=".2"/><stop offset=".43" stop-color="#fffdf6" stop-opacity="0"/><stop offset="1" stop-color="#0b1030" stop-opacity=".16"/></linearGradient>
+  <radialGradient id="g-dome" cx=".34" cy=".3" r=".75"><stop offset="0" stop-color="#fffdf6" stop-opacity=".8"/><stop offset=".4" stop-color="#fffdf6" stop-opacity=".16"/><stop offset="1" stop-color="#0b1030" stop-opacity=".16"/></radialGradient>
+  <radialGradient id="g-ball" cx=".34" cy=".28" r=".8"><stop offset="0" stop-color="#fffdf6" stop-opacity=".55"/><stop offset=".45" stop-color="#fffdf6" stop-opacity="0"/><stop offset="1" stop-color="#0b1030" stop-opacity=".22"/></radialGradient>
+  <linearGradient id="g-grass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffdf6" stop-opacity=".3"/><stop offset=".55" stop-color="#fffdf6" stop-opacity="0"/></linearGradient>
+  <linearGradient id="g-rock" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b1030" stop-opacity="0"/><stop offset="1" stop-color="#0b1030" stop-opacity=".3"/></linearGradient>
+</defs></svg>
+<div class="sky" aria-hidden="true">
+  <span class="cloud c1"></span><span class="cloud c2"></span><span class="cloud c3"></span><span class="cloud c4"></span><span class="cloud c5"></span>
+  <span class="islet i1"></span><span class="islet i2"></span><span class="islet i3"></span><span class="islet i4"></span><span class="islet i5"></span>
+</div>
+
+<header class="hud" id="hud" hidden>
+  <span class="brand">Career Quest</span>
+  <span class="hud-player" id="hud-player"></span>
+  <span class="hud-score" id="hud-score"><span id="hud-points">0</span> / 25 <span class="hud-unit">Python points</span></span>
+  <ol class="path" id="hud-path" aria-label="Levels"></ol>
+  <button class="btn-small btn-draft" id="btn-draft" type="button">Download draft</button>
+</header>
+
+<main>
+  <section class="screen screen-title" id="screen-title">
+    <div class="title-card panel">
+      <h1 class="logo">Career Quest</h1>
+      <p class="logo-sub">Code Your Next Move</p>
+      <p class="logo-org">AUC Data Science Initiative</p>
+      <p class="premise">Fix 3 tiny Python mistakes. Each fix adds a building to your portfolio city.</p>
+      <div class="title-continue" id="title-continue" hidden>
+        <button class="btn btn-go btn-big" id="title-continue-btn" type="button">Continue</button>
+        <button class="btn-text" id="title-new" type="button">Start fresh</button>
+      </div>
+      <div class="title-form" role="group" aria-labelledby="player-id-lbl">
+        <label class="label" id="player-id-lbl" for="player-id">Your player ID</label>
+        <input id="player-id" class="id-input" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="P01 to P30" aria-describedby="player-id-help player-id-err">
+        <span class="help" id="player-id-help">Your helper gives you an ID from P01 to P30.</span>
+        <span class="err" id="player-id-err" role="alert" hidden></span>
+        <button class="btn btn-go btn-big" id="start-btn" type="button">Start your quest</button>
+      </div>
+      <p class="fine" id="save-claim">No account. No resume. Hints are free. Your progress saves as you go.</p>
+      <p class="fine fine-ok" id="offline-note" hidden>This laptop has a copy of the game, so it keeps working if the Wi-Fi drops.</p>
+    </div>
+    <div class="title-hero" aria-hidden="true"><div class="scene scene-hero" id="hero-scene"></div></div>
+  </section>
+
+  <section class="screen screen-game" id="screen-game" hidden>
+    <div class="panel left" id="left"></div>
+    <div class="right">
+      <div class="port-head"><h2 id="p-name"></h2><p id="p-role"></p></div>
+      <div class="scene" id="scene"></div>
+      <div class="detail panel" id="detail" tabindex="0" role="region" aria-labelledby="detail-h"></div>
+      <p class="data-badge" id="data-badge"></p>
+    </div>
+  </section>
+</main>
+
+<div class="tab-note" id="tab-note" role="alert" hidden>
+  <p>Career Quest is open in another tab. Playing in two tabs can mix up your progress.</p>
+  <button class="btn-small" id="tab-here" type="button">Play in this tab</button>
+</div>
+<div class="save-note" id="save-note" role="alert" hidden>
+  <p>This browser isn't saving your progress. Keep this tab open, and use Download draft in the top bar before you close it.</p>
+  <button class="btn-small" id="save-note-ok" type="button">Got it</button>
+</div>
+<div class="sr-only" id="announcer" aria-live="polite"></div>
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+</body>
+</html>
