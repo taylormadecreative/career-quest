@@ -1122,7 +1122,7 @@ async function runLevel(ch) {
         if (!rep2.ok && ["setup", "timeout"].includes(rep2.kind)) { const e = friendlyError(rep2, 1); showFeedback("err", e.title, e.detail, { tech: e.tech }); return; }
         const follows = followsRole(rep2, alt, want);
         if (follows) { if (!res.result.alt) Object.assign(res.result, { alt, altN: want }); }
-        else { res = { pass: false, msg: `It works for ${state.role}, but if a friend picked ${alt}, your line wouldn't find their postings. What could the filter compare each job's role to, so it works for any career?` }; break; }
+        else { res = { pass: false, msg: `It works for ${state.role}, but if a friend picked ${alt}, your line wouldn't find their postings. Instead of typing your career in quotes, use the name line 1 gave it, with no quotes, like FAVORITE in the example.` }; break; }
       }
       if (res.pass) {
         // ...and keep only exact matches: add a few look-alike roles and run it once more.
@@ -1142,6 +1142,16 @@ async function runLevel(ch) {
       if (!rep3.ok && ["setup", "timeout"].includes(rep3.kind)) { const e = friendlyError(rep3, 3); showFeedback("err", e.title, e.detail, { tech: e.tech }); return; }
       if (!rep3.ok || !followsFlip(rep3.top, flipped))
         res = { pass: false, msg: "Your line gives the right names, but it isn't ranking by the numbers in counts, your Level 2 tally: when those numbers change, your answer doesn't. Let sorted() rank the counts, then take the first three." };
+    }
+    // Level 1: a career typed in quotes (the most common beginner try). Say exactly what's off with that text,
+    // then point at line 1, without writing the line for them.
+    const typed = ch.level === 1 && !res.pass && !untouched ? (line.match(/==\s*(["'])(.*?)\1/) || [])[2] : undefined;
+    if (typed != null && typed !== state.role) {   // their own career, typed exactly, already gets the "if a friend picked…" message
+      const known = CAREERS.map((c) => c.id).find((r) => r.toLowerCase() === typed.trim().toLowerCase());
+      const what = !known ? `No posting's role is exactly "${typed}", so your filter keeps nothing.`
+        : known !== typed ? `Python is picky about capital letters: "${typed}" isn't the same as "${known}", so nothing matches.${known !== state.role ? ` It's also a different career: line 1 says yours is ${state.role}.` : ""}`
+        : `"${typed}" is a different career: line 1 says yours is ${state.role}.`;
+      res = { pass: false, msg: `${what} Instead of typing a career in quotes, use the name line 1 gave your career, with no quotes, like FAVORITE in the example.` };
     }
     if (!res.pass) {
       if (untouched) showFeedback("warn", "That's what the code does right now.", `${res.msg} Change the highlighted line (line ${EDIT_LINE[ch.level]}), then press Run again.`);
