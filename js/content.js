@@ -38,7 +38,7 @@ export const CHALLENGES = [
         { text: "Go through every job posting in `JOBS`, one at a time,"  },
         { text: "and keep a posting only if its role (`job[\"role\"]`) equals (`==`) the text \"ROLE_GOES_HERE\".", bug: "No posting has that role, so right now this keeps 0." },
       ],
-      move: "Change line 3 so it keeps the postings for your career. Then press Run.",
+      move: "Replace \"ROLE_GOES_HERE\" (quotes and all) with the name line 1 saved your career under. Then press Run.",
       // A worked example on different data (Jamal's "parallel example"), one click away under Your move.
       example: {
         intro: "Picking the Music classes out of a list of classes. Line 1 saves \"Music\" under the name `FAVORITE`.",
@@ -89,7 +89,7 @@ export const CHALLENGES = [
         { text: "and through each skill listed on it." },
         { text: "Set the skill's count (`counts[skill]`) to its old count, or 0 if it's new (`counts.get(skill, 0)`), plus 0.", bug: "Adding 0 never changes anything, so every count stays at 0." },
       ],
-      move: "Change line 4 so a skill's count goes up each time the skill shows up. Then press Run.",
+      move: "Change the `+ 0` at the end of line 4 so a skill's count goes up by one each time it shows up. Then press Run.",
       example: {
         intro: "Counting the fruit in some shopping baskets.",
         rows: [
@@ -140,7 +140,7 @@ export const CHALLENGES = [
         { text: "by each skill's count (`key=counts.get`), smallest first (`reverse=False`), then keep the first three (`[:3]`).", bug: "Smallest first means you get the three rarest skills, not the top three." },
         { text: "Show the three skills." },
       ],
-      move: "Change line 2 so the biggest counts come first. Then press Run.",
+      move: "Change the part of line 2 that says smallest first, so the biggest counts come first. Then press Run.",
       example: {
         intro: "Picking the 2 best test scores.",
         rows: [
