@@ -170,7 +170,7 @@ async function forgetSavedPython(name) {
   try { for (const k of await caches.keys()) if (k.startsWith("cq-vendor")) { const c = await caches.open(k); for (const u of which) await c.delete(u); } } catch {}
   py.cached = false; const n = $("#offline-note"); if (n) n.hidden = true;
 }
-const progressText = () => py.progress ? `Downloading Python: ${(py.progress.got / 1e6).toFixed(1)} of ${(py.progress.total / 1e6).toFixed(1)} MB.${py.progress.waiting ? " The Wi-Fi dropped. It picks up again by itself when the connection is back." : ""}` : "";
+const progressText = () => py.progress ? `Downloading Python: ${(py.progress.got / 1e6).toFixed(1)} of ${(py.progress.total / 1e6).toFixed(1)} MB.${py.progress.waiting ? " The Wi-Fi dropped; it picks up again on its own." : ""}` : "";
 // Wait a while, or less if the laptop reconnects to the Wi-Fi first.
 const napOrOnline = (ms) => new Promise((r) => { const done = () => { clearTimeout(t); removeEventListener("online", done); r(); }; const t = setTimeout(done, ms); addEventListener("online", done); });
 async function allSaved() {
@@ -451,12 +451,14 @@ function tickPoints(from, to) {
 // Scroll the panel so `el` sits fully below the pinned code area, or starts right under it if it's too tall.
 // The pinned code area can grow a moment after a reveal (a help button arrives in it): reveal again then.
 let lastReveal = null;
-function reveal(el, again = false) {
-  if (!again) lastReveal = { el, at: Date.now() };
+function reveal(el, again = false, until = null) {
+  if (!again) lastReveal = { el, until, at: Date.now() };
   const left = $("#left"), w = $(".work"), smooth = reduceMotion() ? "auto" : "smooth";
-  if (!w || getComputedStyle(w).position !== "sticky") return el.scrollIntoView({ block: "nearest", behavior: smooth });
-  const L = left.getBoundingClientRect(), r = el.getBoundingClientRect();
-  const pinned = parseFloat(getComputedStyle(w).top) + w.offsetHeight + 8;  // pinned area height, plus a small gap
+  if (!w || getComputedStyle(w).position !== "sticky") return (until || el).scrollIntoView({ block: "nearest", behavior: smooth });
+  const L = left.getBoundingClientRect(), a = el.getBoundingClientRect(), b = until?.getBoundingClientRect();
+  const r = b && b.height ? { top: a.top, height: Math.max(a.bottom, b.bottom) - a.top } : a;
+  // Where the pinned area ends, measured from the panel's top edge: sticky offsets count from inside the panel's padding.
+  const pinned = left.clientTop + parseFloat(getComputedStyle(left).paddingTop) + parseFloat(getComputedStyle(w).top) + w.offsetHeight + 8;
   const room = left.clientHeight - pinned - 8;
   const y = r.top - L.top + left.scrollTop;                                    // el's top in panel content
   const showTop = y - pinned, showBottom = y + r.height - left.clientHeight + 8;
@@ -471,7 +473,7 @@ function watchWork() {
   if (!w || !("ResizeObserver" in window)) return;
   workRO = new ResizeObserver(() => {
     left.style.setProperty("--work-h", `${Math.ceil(w.getBoundingClientRect().height)}px`);
-    if (lastReveal?.el.isConnected && Date.now() - lastReveal.at < 1500) reveal(lastReveal.el, true);
+    if (lastReveal?.el.isConnected && Date.now() - lastReveal.at < 1500) reveal(lastReveal.el, true, lastReveal.until);
   });
   workRO.observe(w);
 }
@@ -577,7 +579,7 @@ function careerView() {
   ${locked ? `<p class="help">Your career is locked in because your code already used it.</p>` : ""}
   <div class="field"><span class="label" id="skills-lbl">Skills I already have <span class="opt">pick up to 4</span></span>
     <div class="chips" id="skill-chips" role="group" aria-labelledby="skills-lbl"></div>
-    <div class="add-skill"><label class="sr-only" for="own-skill">Add your own skill</label><input id="own-skill" maxlength="28" placeholder="Add your own"><button type="button" class="btn-small" id="add-skill">Add</button></div>
+    <div class="add-skill"><label class="sr-only" for="own-skill">Add your own skill</label><input id="own-skill" maxlength="40" placeholder="Add your own"><button type="button" class="btn-small" id="add-skill">Add</button></div>
   </div>
   <div class="field"><label class="label" for="experience">One thing I actually did</label>
     <textarea id="experience" rows="3" maxlength="320" aria-describedby="experience-help experience-err" placeholder="Example: ${esc(EXAMPLE_PROOF)}">${esc(state.experience)}</textarea>
@@ -653,8 +655,8 @@ function challengeView() {
   </div>
   </div>
   <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
-  <div id="hints" class="hints">${hintNotes(ch)}</div>
   <div id="stuck"></div>
+  <div id="hints" class="hints">${hintNotes(ch)}</div>
   <p class="ask">Stuck? Ask a teammate or helper: <em>"I expected ___, but I saw ___."</em></p>`;
 }
 const clueControl = (used) => used >= 3
@@ -665,7 +667,8 @@ function hintNotes(ch) {
   const used = state.hintsUsed[ch.level] || 0, fold = shortScreen();
   return ch.hints.slice(0, used).map((h, i) => {
     const newest = i === used - 1;
-    return `<details class="hint" data-i="${i}" ${newest || !fold ? "open" : ""}><summary class="hint-tier">Hint ${i + 1} of 3 · ${h.tier}</summary><p>${fmt(h.text)}</p>${newest ? `<p class="hint-free">Hints never cost points.</p>` : ""}</details>`;
+    const back = newest && used >= 3 ? `<button type="button" class="btn-text hint-back" data-back>Back to line ${EDIT_LINE[ch.level]}</button>` : "";
+    return `<details class="hint" data-i="${i}" ${newest || !fold ? "open" : ""}><summary class="hint-tier">Hint ${i + 1} of 3 · ${h.tier}</summary><p>${fmt(h.text)}</p>${newest ? `<p class="hint-free">Hints never cost points.</p>${back}` : ""}</details>`;
   }).join("");
 }
 const isStuck = (lvl) => (state.fails[lvl] || 0) >= 5 || ((state.hintsUsed[lvl] || 0) >= 3 && (state.fails[lvl] || 0) >= 2);
@@ -673,20 +676,22 @@ function renderStuck(ch, { noPython = false, slow = false } = {}) {
   const box = $("#stuck"), slot = $("#help-slot");
   if (!box || (!noPython && !isStuck(ch.level)) || state.solved[ch.level]) { if (box && box.dataset.noPython !== "1") { box.innerHTML = ""; if (slot) slot.innerHTML = ""; } return; }
   const variant = slow ? "slow" : noPython ? "noPython" : "stuck";
-  if (box.dataset.shown === "1" && box.dataset.variant === variant) return;
+  if (box.dataset.shown === "1" && box.dataset.variant === variant) return false;
   box.dataset.shown = "1"; box.dataset.variant = variant;
   if (noPython) box.dataset.noPython = "1";
   box.innerHTML = slow
     ? `<div class="stuck-card" id="stuck-why"><p class="fb-title">Python is still downloading on this Wi-Fi.</p>
-    <p>You can keep waiting: the game switches on by itself when it's ready. Short on time? Raise your hand, or use <strong>Unlock with help</strong> next to Run to keep building your city. You get 0 points for this level, and your portfolio will say a helper unlocked it.</p></div>`
+    <p>It switches on by itself when it's ready. Short on time? Use <strong>Unlock with help</strong> next to Run: 0 points for this level, and your portfolio will say a helper unlocked it.</p></div>`
     : noPython
-    ? `<div class="stuck-card" id="stuck-why"><p class="fb-title">Python can't run on this laptop right now.</p>
-    <p>If a helper can't get Python going, use <strong>Unlock with help</strong> next to Run to keep building your city. You get 0 points for this level, and your portfolio will say a helper unlocked it.</p></div>`
+    ? `<div class="stuck-card" id="stuck-why"><p>If a helper can't get Python going, use <strong>Unlock with help</strong> next to Run: 0 points for this level, and your portfolio will say a helper unlocked it.</p></div>`
     : `<div class="stuck-card" id="stuck-why"><p class="fb-title">Still stuck? That's normal.</p>
-    <p>Raise your hand and a helper will come over. Short on time? Use <strong>Unlock with help</strong> next to Run to keep building your city. You get 0 points for this level, and your portfolio will say a helper unlocked it.</p></div>`;
+    <p>Raise your hand, or use <strong>Unlock with help</strong> next to Run: 0 points for this level, and your portfolio will say a helper unlocked it.</p></div>`;
   slot.innerHTML = `<button type="button" class="btn-small btn-help" id="help-unlock" aria-describedby="stuck-why">Unlock with help</button>`;
   $("#help-unlock").addEventListener("click", (e) => { if (arm(e.currentTarget, "Click again to unlock for 0 points")) helpUnlock(ch); });
+  // The card explains the "Unlock with help" button that just appeared next to Run: bring the message and the card into view together.
+  requestAnimationFrame(() => { const f = $("#feedback"); if (f && box.isConnected) reveal(f.innerHTML ? f : box, false, box); });
   announce(slow ? "Python is still downloading. You can keep waiting, or unlock this level with help for 0 points." : noPython ? "You can unlock this level with help for 0 points." : "Still stuck? That's normal. Raise your hand, or unlock this level with help for 0 points.");
+  return true;
 }
 
 function unlockedView() {
@@ -704,8 +709,6 @@ function unlockedView() {
     <label class="explain-label" for="explain"><span class="explain-k">Explain your unlock.</span> ${esc(helped ? ch.explain.helpedQuestion : ch.explain.question)} <span class="opt">Say it like you would in an interview.</span></label>
     <textarea id="explain" rows="3" maxlength="600" aria-describedby="explain-nudge">${esc(state.explains[ch.level] || "")}</textarea>
     <div class="starters" role="group" aria-label="Sentence starters">${(helped ? ch.explain.helpedStarters : ch.explain.starters).map((s) => `<button type="button" class="chip chip-small" data-starter="${esc(s)}">${esc(s)}</button>`).join("")}</div>
-    ${last ? `<label class="label" for="next-step">My next step <span class="opt">one skill, one action, a date</span></label>
-      <input id="next-step" maxlength="160" value="${esc(state.nextStep)}" placeholder="Example: Finish a beginner SQL exercise by December 1.">` : ""}
     <p class="help nudge" id="explain-nudge" hidden></p>
   </div>
   <div class="think think-after"><p class="why why-down"><strong>Why it's on your portfolio:</strong> ${esc(helped ? ch.helpedPortfolioWhy : ch.portfolioWhy)}</p><p><strong>Think about it:</strong> ${esc(ch.why)} ${esc(ch.transfer(r))}</p></div>
@@ -786,7 +789,7 @@ function bindLeft(phase) {
       if (!v) { inp.focus(); return; }
       if (!state.skills.includes(v) && state.skills.length >= 4) { toast("Pick up to 4. Click one to remove it."); return; }
       if (!state.skills.includes(v)) state.skills.push(v);
-      inp.value = ""; save(); renderChips(); renderDetail(); inp.focus();
+      inp.value = ""; limitNote(inp); save(); renderChips(); renderDetail(); inp.focus();
       announce(`${v} added to your skills.`);
     });
     $("#own-skill").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("#add-skill").click(); } });
@@ -868,7 +871,7 @@ function bindLeft(phase) {
             : py.badFile === "saved" ? "This laptop's saved copy of Python was damaged, so it was cleared. Connect to Wi-Fi and Try again to download a fresh copy, or raise your hand."
             : py.badFile ? `The game's Python file arrived damaged, often because a web filter replaced it. ${HELP_NEXT}`
             : py.cutOff ? (navigator.onLine === false ? "This laptop lost the Wi-Fi before Python finished downloading. It picks up again by itself when the Wi-Fi is back, or press Try again." : "The Python download was cut off partway, usually by a Wi-Fi drop. Check the Wi-Fi and press Try again, or raise your hand.")
-            : py.blocked ? `The Wi-Fi or a web filter is blocking the game's Python file. ${HELP_NEXT}`
+            : py.blocked ? `A web filter or the Wi-Fi is blocking Python. ${HELP_NEXT}`
             : "Python didn't start. Try again, and if it still fails, raise your hand.", { retry: !py.noWasm, tech: py.noWasm ? "For the helper: WebAssembly is turned off or missing in this browser." : "" });
           renderStuck(ch, { noPython: true });
         }
@@ -876,9 +879,11 @@ function bindLeft(phase) {
         const box = $("#stuck"); box.innerHTML = ""; delete box.dataset.noPython; delete box.dataset.shown; delete box.dataset.variant; $("#help-slot").innerHTML = ""; renderStuck(ch);
         if (fb) { fb.innerHTML = ""; delete fb.dataset.kind; }
       } else if (s === "slow" || s === "saving") {
-        if (fb?.dataset.kind !== "wait" || fb.dataset.s !== s) {
-          showFeedback("wait", s === "saving" ? "Getting the game ready on this laptop." : "Python is still loading.", py.cached ? "Starting Python from this laptop's saved copy." : (s === "saving" || navigator.serviceWorker?.controller) ? "The first time can take a few minutes on busy Wi-Fi. After that it's instant, even offline." : "The first time can take a few minutes on busy Wi-Fi.", { retry: false });
-          fb.dataset.s = s;
+        // Once the "still downloading" card shows, it carries the explanation, so the message above it gets shorter.
+        const key = py.offerHelp ? `${s}+help` : s;
+        if (fb?.dataset.kind !== "wait" || fb.dataset.s !== key) {
+          showFeedback("wait", s === "saving" ? "Getting the game ready on this laptop." : "Python is still loading.", py.offerHelp ? "" : py.cached ? "Starting Python from this laptop's saved copy." : (s === "saving" || navigator.serviceWorker?.controller) ? "The first time can take a few minutes on busy Wi-Fi. After that it's instant, even offline." : "The first time can take a few minutes on busy Wi-Fi.", { retry: false });
+          fb.dataset.s = key;
           fb.insertAdjacentHTML("beforeend", `<p class="fb-progress">${esc(progressText())}</p>`);
         }
         if (py.offerHelp) renderStuck(ch, { noPython: true, slow: true });
@@ -904,10 +909,12 @@ function bindLeft(phase) {
       renderStuck(ch);
       if (used >= 3) { $("#clue-slot").innerHTML = clueControl(used); note?.querySelector("summary")?.focus({ preventScroll: true }); }
       else $("#clue span").textContent = "Next clue";
-      if (note) reveal(note);
+      if (note) requestAnimationFrame(() => reveal(note));   // after any stuck card's own scroll: the clue just asked for comes first
       if (note && !reduceMotion()) note.animate([{ opacity: 0, transform: "translateY(-6px) rotate(-1deg)" }, { opacity: 1, transform: "rotate(-0.5deg)" }], { duration: 220, easing: EASE });
     });
     bindClue();
+    // "Back to line 3" in the last clue: keyboard users go straight to the line instead of tabbing through the city.
+    $("#hints").addEventListener("click", (e) => { if (!e.target.closest("[data-back]")) return; const ed = $("#edit-line"); if (ed && !ed.readOnly) { ed.focus(); ed.setSelectionRange(ed.value.length, ed.value.length); } });
     $("#reset").addEventListener("click", () => {
       input.value = ch.lines(state.role).find((l) => l.edit).start;
       state.lines[`draft${ch.level}`] = input.value; size(); save(); input.focus();
@@ -1116,9 +1123,7 @@ async function runLevel(ch) {
 }
 function failed(ch) {
   state.fails[ch.level] = (state.fails[ch.level] || 0) + 1; save();
-  const had = !!$("#help-unlock");
-  renderStuck(ch);
-  if (!had && $("#help-unlock")) requestAnimationFrame(() => { const f = $("#feedback"); if (f) reveal(f); });
+  renderStuck(ch);   // the first time it appears, it scrolls the feedback and its explanation into view
 }
 async function succeed(ch, result, { helped = false } = {}) {
   const before = points();
@@ -1309,6 +1314,19 @@ function celebrateCity() {
 let FONT = "";
 fetch("vendor/fonts/nunito-latin.woff2").then((r) => r.blob()).then((b) => new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(b); })).then((d) => (FONT = d)).catch(() => {});
 const page = (opts) => portfolioHtml(state, DATA, { ...opts, font: FONT });
+
+/* ---------- length limits: said out loud near the end, never a silent stop ---------- */
+function limitNote(f) {
+  if (!(f instanceof HTMLInputElement || f instanceof HTMLTextAreaElement) || !(f.maxLength > 0) || ["player-id", "edit-line"].includes(f.id)) return;
+  const anchor = f.closest(".add-skill") || f, left = f.maxLength - f.value.length, near = Math.max(8, Math.round(f.maxLength * 0.12));
+  let n = anchor.nextElementSibling?.classList.contains("limit") ? anchor.nextElementSibling : null;
+  if (left > near) { if (n) n.hidden = true; delete f.dataset.atMax; return; }
+  if (!n) { n = Object.assign(document.createElement("span"), { className: "limit", id: `${f.id}-limit` }); anchor.after(n); }
+  n.hidden = false; n.classList.toggle("at-max", left <= 0);
+  n.textContent = left > 0 ? `${left} character${left === 1 ? "" : "s"} left` : `That's the limit: ${f.maxLength} characters.`;
+  if (left <= 0 && !f.dataset.atMax) { f.dataset.atMax = "1"; announce(n.textContent); }
+}
+document.addEventListener("input", (e) => limitNote(e.target));
 
 /* ---------- drafts ---------- */
 function saveDraft() {
