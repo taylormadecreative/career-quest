@@ -1146,7 +1146,10 @@ async function runLevel(ch) {
     // Level 1: a career typed in quotes (the most common beginner try). Say exactly what's off with that text,
     // then point at line 1, without writing the line for them.
     const typed = ch.level === 1 && !res.pass && !untouched ? (line.match(/\[\s*(["'])role\1\s*\]\s*==\s*(["'])(.*?)\2/) || [])[3] : undefined;
-    if (typed != null && typed !== state.role) {   // their own career, typed exactly, already gets the "if a friend picked…" message
+    // The name in quotes ("TARGET_ROLE"): one step away. Point straight at the quote marks.
+    if (typed != null && typed.replace(/[\s_]+/g, "").toUpperCase() === "TARGETROLE")
+      res = { pass: false, msg: `So close! Take the quote marks off: TARGET_ROLE, not "${typed}". In quotes, Python looks for those exact letters instead of reading your career from line 1.` };
+    else if (typed != null && typed !== state.role) {   // their own career, typed exactly, already gets the "if a friend picked…" message
       const known = CAREERS.map((c) => c.id).find((r) => r.toLowerCase() === typed.trim().toLowerCase());
       const what = !known ? `No posting's role is exactly "${typed}", so nothing matches.`
         : known !== typed ? `Capital letters matter: "${typed}" isn't "${known}".${known !== state.role ? ` And line 1 says your career is ${state.role}.` : ""}`
