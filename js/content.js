@@ -30,6 +30,16 @@ export const CHALLENGES = [
     unlocks: "explorer",
     mission: "Find the job postings for your career.",
     intro: "Line 1 saves your career in a variable (a name that stores a value) called TARGET_ROLE. Lines 2 and 3 say: keep each job in JOBS if its role equals ___. This code has one bug, a small mistake. Press Run to see what it does now, then change the highlighted line (line 3) and run it again.",
+    // The briefing a total beginner reads first: the goal in real numbers, every line in plain English, the bug, the move.
+    brief: (c) => ({
+      goal: `Keep only the ${c.mine} ${c.role} postings out of all ${c.total}.`,
+      lines: [
+        { text: `Save your career, "${c.role}", under the name \`TARGET_ROLE\`.` },
+        { text: "Go through every job posting in `JOBS`, one at a time,"  },
+        { text: "and keep a posting only if its role (`job[\"role\"]`) equals (`==`) the text \"ROLE_GOES_HERE\".", bug: "No posting has that role, so right now this keeps 0." },
+      ],
+      move: "Change line 3 so it keeps the postings for your career. Then press Run.",
+    }),
     lines: (role) => [
       { code: `TARGET_ROLE = ${JSON.stringify(role)}`, note: "from your profile" },
       { code: "matched_jobs = [job for job in JOBS" },
@@ -60,6 +70,16 @@ export const CHALLENGES = [
     unlocks: "chart",
     mission: "Count how many of your postings mention each skill.",
     intro: "Line 1 starts an empty tally. Lines 2 and 3 visit every skill in every one of your postings. Line 4 says: a skill's new count is its old count (0 the first time) plus ___. Press Run to see what the counter does now, then fix the highlighted line (line 4).",
+    brief: (c) => ({
+      goal: `Give every skill a count of the postings that list it. If 3 of your ${c.mine} postings list SQL, SQL's count should be 3.`,
+      lines: [
+        { text: "Start an empty tally called `counts`." },
+        { text: "Go through each of your postings," },
+        { text: "and through each skill listed on it." },
+        { text: "Set the skill's count (`counts[skill]`) to its old count, or 0 if it's new (`counts.get(skill, 0)`), plus 0.", bug: "Adding 0 never changes anything, so every count stays at 0." },
+      ],
+      move: "Change line 4 so a skill's count goes up each time the skill shows up. Then press Run.",
+    }),
     lines: () => [
       { code: "counts = {}" },
       { code: "for posting in matched_jobs:" },
@@ -91,6 +111,15 @@ export const CHALLENGES = [
     unlocks: "strategy",
     mission: "Find the three skills mentioned most, not least.",
     intro: "Lines 1 and 2 say: sort the skills by their counts, then keep the first three. Line 3 shows them. For a top three, the most common skills need to come first. Press Run to see which three it picks now, then fix the highlighted line (line 2).",
+    brief: () => ({
+      goal: "List your career's 3 most-mentioned skills, biggest count first.",
+      lines: [
+        { text: "Sort the skills in `counts` (your Level 2 tally)" },
+        { text: "by each skill's count (`key=counts.get`), smallest first (`reverse=False`), then keep the first three (`[:3]`).", bug: "Smallest first means you get the three rarest skills, not the top three." },
+        { text: "Show the three skills." },
+      ],
+      move: "Change line 2 so the biggest counts come first. Then press Run.",
+    }),
     lines: () => [
       { code: "top_skills = sorted(counts," },
       { edit: true, indent: 4, start: "key=counts.get, reverse=False)[:3]" },

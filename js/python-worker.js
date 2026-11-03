@@ -144,6 +144,25 @@ for (const k of ["instantiate", "instantiateStreaming", "compile", "compileStrea
     });
   };
 }
+// Every Python download tells the page that bytes are still arriving, so a slow but steady download (for
+// example on the backup laptop, which can't keep a saved copy) is never mistaken for a stuck one.
+const realFetch = self.fetch.bind(self);
+let lastTold = 0;
+self.fetch = async (...args) => {
+  const res = await realFetch(...args);
+  if (!res.body) return res;
+  const reader = res.body.getReader();
+  const body = new ReadableStream({
+    async pull(c) {
+      const { done, value } = await reader.read();
+      if (done) return c.close();
+      if (Date.now() - lastTold > 500) { lastTold = Date.now(); self.postMessage({ type: "bytes" }); }
+      c.enqueue(value);
+    },
+    cancel(why) { return reader.cancel(why); },
+  });
+  return new Response(body, { status: res.status, statusText: res.statusText, headers: res.headers });
+};
 // The flag comes in the first message, not the worker's address: a worker served from the
 // service worker's saved copy takes that copy's address, which has no query string.
 let ready = null;

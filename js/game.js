@@ -112,12 +112,18 @@ const py = {
     this.pending.clear();
     this.set("loading");
     this.timers.slow = setTimeout(() => { if (this.status === "loading") this.set("slow"); }, 10000);
-    // From the saved copy Python starts in a few seconds; only a first download on slow Wi-Fi needs long.
-    this.timers.limit = setTimeout(() => { if (["loading", "slow"].includes(this.status)) { this.worker?.terminate(); this.fail(); } }, this.cached ? 40000 : 1200000);
+    // From the saved copy Python starts in a few seconds (40 s is plenty). A download straight from the network
+    // can be slow but steady: it only counts as stuck after 90 seconds with no new bytes at all.
+    const limit = () => {
+      clearTimeout(this.timers.limit);
+      this.timers.limit = setTimeout(() => { if (["loading", "slow"].includes(this.status)) { this.worker?.terminate(); this.fail(); } }, this.cached ? 40000 : 90000);
+    };
+    limit();
     this.worker = new Worker("js/python-worker.js");
     this.worker.onmessage = (e) => {
       const m = e.data;
-      if (m.type === "ready") { this.clear(); this.attempts = 0; this.set("ready"); }
+      if (m.type === "bytes") { this.lastBytes = Date.now(); if (!this.cached) limit(); }
+      else if (m.type === "ready") { this.clear(); this.attempts = 0; this.set("ready"); }
       else if (m.type === "result") { const p = this.pending.get(m.id); if (p && m.token === p.token) { p(m.data); this.pending.delete(m.id); } }
       else if (m.type === "fatal") {
         if (m.id != null && this.pending.has(m.id)) { this.pending.get(m.id)({ ok: false, kind: "setup" }); this.pending.delete(m.id); this.start(); return; }
@@ -178,11 +184,13 @@ async function allSaved() {
 }
 // Download one file and save it only if its fingerprint matches. Slow Wi-Fi is fine: the clock only runs out
 // when no new bytes arrive for 45 seconds. Returns "ok", "cut" (worth another try) or "bad" (a filter or a wrong file).
-async function saveFile(cache, u, onBytes, stallMs = 45000) {
+async function saveFile(cache, u, onBytes, fresh = false, stallMs = 45000) {
   const stop = new AbortController();
   let timer = setTimeout(() => stop.abort(), stallMs), mine = 0;
   try {
-    const res = await fetch(`${u}?cq-save`, { cache: "reload", signal: stop.signal });   // ?cq-save: the service worker lets it through
+    // ?cq-save: the service worker lets it through. The browser's own copy is used if it has one (the fonts the page
+    // just loaded, say), so nothing downloads twice; a copy that fails its fingerprint is fetched fresh.
+    const res = await fetch(`${u}?cq-save`, { cache: fresh ? "reload" : "default", signal: stop.signal });
     if (!res.ok || !res.body || /text\/html/i.test(res.headers.get("content-type") || "")) return "bad";
     const reader = res.body.getReader(), parts = [];
     for (;;) {
@@ -199,16 +207,28 @@ async function saveFile(cache, u, onBytes, stallMs = 45000) {
   } catch { onBytes(-mine); return "cut"; }
   finally { clearTimeout(timer); }
 }
+// Two tabs: only one downloads (a Web Lock); the other shows the same progress while it waits its turn.
+const progressChannel = "BroadcastChannel" in self ? new BroadcastChannel("career-quest-progress") : null;
+if (progressChannel) progressChannel.onmessage = (e) => {
+  if (py.status !== "saving" || py.savingHere) return;
+  py.progress = { ...e.data, at: Date.now() };
+  const el = $(".fb-progress"); if (el) el.textContent = progressText();
+};
 // First visit: the page downloads the 12 MB itself, one file at a time, with a live "4.1 of 12.3 MB" line.
 // (The service worker can't: Chrome stops its install step after 5 minutes, and slow venue Wi-Fi can take longer.)
 // A filter or a wrong file stops the saving at once, so the student hears about it in seconds, not minutes.
 async function savePython() {
+  py.savingHere = true;
+  try { await saveMissing(); } finally { py.savingHere = false; }
+}
+async function saveMissing() {
   const cache = await caches.open(SAVED.cache);
   const missing = [];
   let got = 0, told = 0, lastByte = Date.now(), waiting = false;
   for (const u of VENDOR_FILES) if (await cache.match(u)) got += SAVED.files[u].bytes; else missing.push(u);
   const tell = (force) => {
     py.progress = { got: Math.min(got, SAVED_BYTES), total: SAVED_BYTES, at: lastByte, waiting };
+    progressChannel?.postMessage(py.progress);
     if (!force && Date.now() - told < 700) return;
     told = Date.now(); const el = $(".fb-progress"); if (el) el.textContent = progressText();
   };
@@ -218,7 +238,8 @@ async function savePython() {
       let how, tries = 0, best = 0, strikes = 0;
       for (;;) {
         let mine = 0;
-        how = await saveFile(cache, u, (n) => { got += n; if (n > 0) { lastByte = Date.now(); mine += n; } tell(); });
+        how = await saveFile(cache, u, (n) => { got += n; if (n > 0) { lastByte = Date.now(); mine += n; } tell(); }, tries > 0);
+        if (how === "bad" && !tries++) continue;   // maybe just a stale browser copy: one fresh try before calling it a filter
         if (how !== "cut") break;
         // A Wi-Fi drop or stall: wait a little longer each time (or until the laptop reconnects), then pick up again.
         // It ends after 3 minutes with no new bytes at all, or when the file keeps breaking off no further than before
@@ -248,7 +269,7 @@ async function startPython() {
   // Slow Wi-Fi: after 3 minutes (or 90 s with no new bytes) a student can choose help instead of waiting.
   const helpCheck = setInterval(() => {
     if (py.status === "ready") return clearInterval(helpCheck);
-    const quiet = Date.now() - (py.progress?.at || py.savedAt || py.startedAt);
+    const quiet = Date.now() - Math.max(py.progress?.at || 0, py.lastBytes || 0, py.savedAt || 0, py.startedAt);
     if (!py.offerHelp && (Date.now() - py.startedAt > 180000 || quiet > 90000)) { py.offerHelp = true; py.listeners.forEach((f) => f(py.status)); }
   }, 5000);
   // A browser that can't run WebAssembly can't run Python: say so now, not after a 12 MB download.
@@ -623,6 +644,16 @@ function dataView() {
   <div class="actions actions-sticky"><button class="btn btn-ghost" id="back-career">Back</button><button class="btn btn-go" id="to-l1" ${sel ? "" : "disabled"} aria-describedby="to-l1-why">${state.solved[1] ? "Back to my quest" : "Start Level 1"}</button><span class="help" id="to-l1-why" ${sel ? "hidden" : ""}>Pick a skill to start.</span></div>`;
 }
 
+// What a beginner reads before the code: the goal, the code line by line in plain English (the bug marked), and the move.
+function briefHtml(ch) {
+  const b = ch.brief({ role: state.role, mine: (DATA.byRole[state.role] || []).length, total: DATA.jobs.length });
+  return `<div class="brief" id="level-intro">
+    <p class="brief-goal"><span class="brief-k">Goal</span> ${fmt(b.goal)}</p>
+    <p class="brief-k brief-k-block" id="brief-plain">The code, in plain English</p>
+    <ol class="brief-lines" aria-labelledby="brief-plain">${b.lines.map((l, i) => `<li${l.bug ? ' class="is-bug"' : ""}><span class="bl-n"><span class="sr-only">Line </span>${i + 1}</span><span${l.bug ? ' id="brief-bug"' : ""}>${fmt(l.text)}${l.bug ? ` <strong class="bl-bug">The bug:</strong> ${fmt(l.bug)}` : ""}</span></li>`).join("")}</ol>
+    <p class="brief-move" id="brief-move"><span class="brief-k">Your move</span> ${fmt(b.move)}</p>
+  </div>`;
+}
 function codeLines(level) {
   const ch = CHALLENGES[level - 1];
   return ch.lines(state.role).map((ln, i) => {
@@ -632,7 +663,7 @@ function codeLines(level) {
     return `<div class="ln ln-edit"><span class="ln-n" aria-hidden="true">${n}</span>
       <span class="indent" style="--i:${ln.indent}"></span>
       <label class="sr-only" for="edit-line">Line ${n}, the line to fix</label>
-      <input id="edit-line" class="edit" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" value="${esc(val)}" aria-describedby="level-intro"></div>`;
+      <input id="edit-line" class="edit" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off" value="${esc(val)}" aria-describedby="brief-bug brief-move"></div>`;
   }).join("");
 }
 
@@ -641,7 +672,7 @@ function challengeView() {
   const used = state.hintsUsed[ch.level] || 0;
   return `<p class="eyebrow">Level ${ch.level} of 3 · ${ch.step}</p>
   <h1 class="h1" tabindex="-1">${esc(ch.mission)}</h1>
-  <p class="intro" id="level-intro">${esc(ch.intro)}</p>
+  ${briefHtml(ch)}
   <div class="work">
   <div class="code-panel">
     <div class="code-head"><span>your_code.py <span class="fix-tip">· fix line ${EDIT_LINE[ch.level]}</span></span><span class="head-r"><span class="py-status" id="py-status"></span></span></div>
@@ -1182,7 +1213,7 @@ function helpUnlock(ch) {
 function showOutput(level, rep) {
   let out = "";
   if (rep.ok) {
-    if (level === 1 && rep.matched) out = `Postings your filter kept: ${rep.matched.n ?? "?"}`;
+    if (level === 1 && rep.matched) out = `Postings your filter kept: ${rep.matched.n ?? "?"} (goal: ${(DATA.byRole[state.role] || []).length})`;
     if (level === 2 && rep.counts) {
       const nums = ranked(rep.counts), odd = Object.values(rep.counts).some((v) => v === null);
       const top = nums.slice(0, 4).map(([k, v]) => `${k} ${v}`).join(", ");
@@ -1221,6 +1252,7 @@ const ROOF_Y = { summary: 38, explorer: 52, chart: 40, strategy: 8, built: 30 };
 function placePop(b, el, key) {
   const host = $("#scene").closest(".right") || $("#scene"), hr = host.getBoundingClientRect(), vr = el.querySelector(".b-art").getBoundingClientRect();
   const k = Math.min(vr.width / 130, vr.height / 182), roof = vr.bottom - k * (182 - ROOF_Y[key]);
+  host.querySelectorAll(".b-pop").forEach((x) => x.remove());   // one result bubble at a time, so two never overlap
   host.append(b);
   const half = b.offsetWidth / 2, x = vr.left - hr.left + vr.width / 2;
   b.style.left = `${Math.min(Math.max(x, half + 4), hr.width - half - 4)}px`;
