@@ -39,6 +39,17 @@ export const CHALLENGES = [
         { text: "and keep a posting only if its role (`job[\"role\"]`) equals (`==`) the text \"ROLE_GOES_HERE\".", bug: "No posting has that role, so right now this keeps 0." },
       ],
       move: "Change line 3 so it keeps the postings for your career. Then press Run.",
+      // A worked example on different data (Jamal's "parallel example"), one click away under Your move.
+      example: {
+        intro: "Picking the Music classes out of a list of classes. Line 1 saves \"Music\" under the name `FAVORITE`.",
+        rows: [
+          { code: 'FAVORITE = "Music"' },
+          { code: "music = [c for c in CLASSES" },
+          { kind: "before", code: '    if c["subject"] == "SUBJECT_GOES_HERE"]', result: "keeps 0 classes" },
+          { kind: "after", code: '    if c["subject"] == FAVORITE]', result: "keeps every Music class" },
+        ],
+        note: "No quotes around `FAVORITE`, so Python uses what it holds: \"Music\". Change line 1 to \"Art\" and the same filter keeps the Art classes.",
+      },
     }),
     lines: (role) => [
       { code: `TARGET_ROLE = ${JSON.stringify(role)}`, note: "from your profile" },
@@ -79,6 +90,17 @@ export const CHALLENGES = [
         { text: "Set the skill's count (`counts[skill]`) to its old count, or 0 if it's new (`counts.get(skill, 0)`), plus 0.", bug: "Adding 0 never changes anything, so every count stays at 0." },
       ],
       move: "Change line 4 so a skill's count goes up each time the skill shows up. Then press Run.",
+      example: {
+        intro: "Counting the fruit in some shopping baskets.",
+        rows: [
+          { code: "counts = {}" },
+          { code: "for basket in baskets:" },
+          { code: '    for fruit in basket["fruits"]:' },
+          { kind: "before", code: "        counts[fruit] = counts.get(fruit, 0) + 0", result: "apple 0, mango 0" },
+          { kind: "after", code: "        counts[fruit] = counts.get(fruit, 0) + 1", result: "apple 3, mango 2" },
+        ],
+        note: "Each time a fruit shows up, its count goes up by one.",
+      },
     }),
     lines: () => [
       { code: "counts = {}" },
@@ -119,6 +141,16 @@ export const CHALLENGES = [
         { text: "Show the three skills." },
       ],
       move: "Change line 2 so the biggest counts come first. Then press Run.",
+      example: {
+        intro: "Picking the 2 best test scores.",
+        rows: [
+          { code: 'scores = {"Ana": 61, "Bo": 70, "Cy": 98, "Di": 91}' },
+          { code: "best = sorted(scores," },
+          { kind: "before", code: "    key=scores.get, reverse=False)[:2]", result: "Ana, Bo: the two lowest" },
+          { kind: "after", code: "    key=scores.get, reverse=True)[:2]", result: "Cy, Di: the two highest" },
+        ],
+        note: "`reverse=True` puts the biggest first, so the first two are the top two.",
+      },
     }),
     lines: () => [
       { code: "top_skills = sorted(counts," },

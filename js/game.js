@@ -652,6 +652,11 @@ function briefHtml(ch) {
     <p class="brief-k brief-k-block" id="brief-plain">The code, in plain English</p>
     <ol class="brief-lines" aria-labelledby="brief-plain">${b.lines.map((l, i) => `<li${l.bug ? ' class="is-bug"' : ""}><span class="bl-n"><span class="sr-only">Line </span>${i + 1}</span><span${l.bug ? ' id="brief-bug"' : ""}>${fmt(l.text)}${l.bug ? ` <strong class="bl-bug">The bug:</strong> ${fmt(l.bug)}` : ""}</span></li>`).join("")}</ol>
     <p class="brief-move" id="brief-move"><span class="brief-k">Your move</span> ${fmt(b.move)}</p>
+    ${b.example ? `<details class="brief-ex"><summary>See an example<span class="ex-sub">(same idea, different data)</span></summary>
+      <p class="ex-intro">${fmt(b.example.intro)}</p>
+      <div class="ex-code" role="group" aria-label="Example code">${b.example.rows.map((r) => `<div class="ex-row${r.kind ? ` is-${r.kind}` : ""}"><span class="ex-tag">${r.kind === "before" ? "Before" : r.kind === "after" ? "After" : ""}</span><code>${hl(r.code)}</code>${r.result ? `<span class="ex-result">Result: ${esc(r.result)}</span>` : ""}</div>`).join("")}</div>
+      <p class="ex-note">${fmt(b.example.note)}</p>
+    </details>` : ""}
   </div>`;
 }
 function codeLines(level) {
