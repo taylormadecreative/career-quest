@@ -651,7 +651,7 @@ function briefHtml(ch) {
   const b = ch.brief({ role: state.role, mine: (DATA.byRole[state.role] || []).length, total: DATA.jobs.length });
   return `<div class="brief" id="level-intro">
     <p class="brief-goal"><span class="brief-k">Goal</span> ${fmt(b.goal)}</p>
-    <p class="brief-k brief-k-block" id="brief-plain">The code, in plain English</p>
+    <p class="brief-k brief-k-block" id="brief-plain">What the code does, line by line <span class="brief-who">Python does these steps when you press Run</span></p>
     <ol class="brief-lines" aria-labelledby="brief-plain">${b.lines.map((l, i) => `<li${l.bug ? ' class="is-bug"' : ""}><span class="bl-n"><span class="sr-only">Line </span>${i + 1}</span><span${l.bug ? ' id="brief-bug"' : ""}>${fmt(l.text)}${l.bug ? ` <strong class="bl-bug">The bug:</strong> ${fmt(l.bug)}` : ""}</span></li>`).join("")}</ol>
     <p class="brief-move" id="brief-move"><span class="brief-k">Your move</span> ${fmt(b.move)}</p>
     ${b.example ? `<details class="brief-ex"><summary>See an example<span class="ex-sub">(same idea, different data)</span></summary>

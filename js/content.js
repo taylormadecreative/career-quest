@@ -34,9 +34,9 @@ export const CHALLENGES = [
     brief: (c) => ({
       goal: `Keep only the ${c.mine} ${c.role} postings out of all ${c.total}.`,
       lines: [
-        { text: `Save your career, "${c.role}", under the name \`TARGET_ROLE\`.` },
-        { text: "Go through every job posting in `JOBS`, one at a time,"  },
-        { text: "and keep a posting only if its role (`job[\"role\"]`) equals (`==`) the text \"ROLE_GOES_HERE\".", bug: "No posting has that role, so right now this keeps 0." },
+        { text: `Saves your career, "${c.role}", under the name \`TARGET_ROLE\`.` },
+        { text: `Looks at each posting in \`JOBS\` (the list of all ${c.total} postings, already loaded for you), one at a time,` },
+        { text: "and keeps a posting only if its role (`job[\"role\"]`) equals (`==`) the text \"ROLE_GOES_HERE\".", bug: "No posting has that role, so right now this keeps 0." },
       ],
       move: "Replace \"ROLE_GOES_HERE\" (quotes and all) with the name line 1 saved your career under. Then press Run.",
       // A worked example on different data (Jamal's "parallel example"), one click away under Your move.
@@ -84,10 +84,10 @@ export const CHALLENGES = [
     brief: (c) => ({
       goal: `Give every skill a count of the postings that list it. If 3 of your ${c.mine} postings list SQL, SQL's count should be 3.`,
       lines: [
-        { text: "Start an empty tally called `counts`." },
-        { text: "Go through each of your postings," },
-        { text: "and through each skill listed on it." },
-        { text: "Set the skill's count (`counts[skill]`) to its old count, or 0 if it's new (`counts.get(skill, 0)`), plus 0.", bug: "Adding 0 never changes anything, so every count stays at 0." },
+        { text: "Starts an empty tally called `counts`." },
+        { text: "Looks at each of your postings," },
+        { text: "and at each skill listed on it." },
+        { text: "Sets the skill's count (`counts[skill]`) to its old count, or 0 if it's new (`counts.get(skill, 0)`), plus 0.", bug: "Adding 0 never changes anything, so every count stays at 0." },
       ],
       move: "Change the `+ 0` at the end of line 4 so a skill's count goes up by one each time it shows up. Then press Run.",
       example: {
@@ -136,9 +136,9 @@ export const CHALLENGES = [
     brief: () => ({
       goal: "List your career's 3 most-mentioned skills, biggest count first.",
       lines: [
-        { text: "Sort the skills in `counts` (your Level 2 tally)" },
-        { text: "by each skill's count (`key=counts.get`), smallest first (`reverse=False`), then keep the first three (`[:3]`).", bug: "Smallest first means you get the three rarest skills, not the top three." },
-        { text: "Show the three skills." },
+        { text: "Sorts the skills in `counts` (your Level 2 tally)" },
+        { text: "by each skill's count (`key=counts.get`), smallest first (`reverse=False`), then keeps the first three (`[:3]`).", bug: "Smallest first means you get the three rarest skills, not the top three." },
+        { text: "Shows the three skills." },
       ],
       move: "Change the part of line 2 that says smallest first, so the biggest counts come first. Then press Run.",
       example: {
