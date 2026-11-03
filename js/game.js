@@ -1145,13 +1145,13 @@ async function runLevel(ch) {
     }
     // Level 1: a career typed in quotes (the most common beginner try). Say exactly what's off with that text,
     // then point at line 1, without writing the line for them.
-    const typed = ch.level === 1 && !res.pass && !untouched ? (line.match(/==\s*(["'])(.*?)\1/) || [])[2] : undefined;
+    const typed = ch.level === 1 && !res.pass && !untouched ? (line.match(/\[\s*(["'])role\1\s*\]\s*==\s*(["'])(.*?)\2/) || [])[3] : undefined;
     if (typed != null && typed !== state.role) {   // their own career, typed exactly, already gets the "if a friend picked…" message
       const known = CAREERS.map((c) => c.id).find((r) => r.toLowerCase() === typed.trim().toLowerCase());
-      const what = !known ? `No posting's role is exactly "${typed}", so your filter keeps nothing.`
-        : known !== typed ? `Python is picky about capital letters: "${typed}" isn't the same as "${known}", so nothing matches.${known !== state.role ? ` It's also a different career: line 1 says yours is ${state.role}.` : ""}`
-        : `"${typed}" is a different career: line 1 says yours is ${state.role}.`;
-      res = { pass: false, msg: `${what} Instead of typing a career in quotes, use the name line 1 gave your career, with no quotes, like FAVORITE in the example.` };
+      const what = !known ? `No posting's role is exactly "${typed}", so nothing matches.`
+        : known !== typed ? `Capital letters matter: "${typed}" isn't "${known}".${known !== state.role ? ` And line 1 says your career is ${state.role}.` : ""}`
+        : `"${typed}" isn't your career: line 1 says ${state.role}.`;
+      res = { pass: false, msg: `${what} Use the name line 1 saved your career under (no quotes), like FAVORITE in the example.` };
     }
     if (!res.pass) {
       if (untouched) showFeedback("warn", "That's what the code does right now.", `${res.msg} Change the highlighted line (line ${EDIT_LINE[ch.level]}), then press Run again.`);

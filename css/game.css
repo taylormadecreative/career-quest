@@ -572,6 +572,7 @@ body[data-paused] main, body[data-paused] .hud { opacity: 0.45; filter: saturate
   .feedback .fb-title, .stuck-card .fb-title { font-size: 17px; }
   .stuck-card p { font-size: 15.5px; line-height: 1.4; }
   .fb-retry { margin-top: 6px; min-height: 38px; }
+  .feedback p:not(.fb-title):not(.fb-tech) { font-size: 15.5px; line-height: 1.42; }
 }
 .learn-more { margin-top: 18px; background: transparent; box-shadow: inset 0 0 0 2px var(--edge); }
 .think { font-size: 16px; color: var(--ink-2); }

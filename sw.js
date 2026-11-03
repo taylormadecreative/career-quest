@@ -1,6 +1,6 @@
 // Keeps a full copy of Career Quest on each laptop after one visit, so bad venue Wi-Fi can't stop it.
 // VERSION is the one place to bump when the game changes.
-const VERSION = "cq-v46";
+const VERSION = "cq-v47";
 // Python and the fonts never change between game versions, so they live in their own cache:
 // bumping VERSION re-downloads the small game files, not the 12 MB Python runtime.
 importScripts("js/saved-files.js");   // the Python and font files, with their fingerprints (self.CQ_SAVED)
