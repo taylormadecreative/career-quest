@@ -113,7 +113,7 @@ const py = {
     this.set("loading");
     this.timers.slow = setTimeout(() => { if (this.status === "loading") this.set("slow"); }, 10000);
     // From the saved copy Python starts in a few seconds; only a first download on slow Wi-Fi needs long.
-    this.timers.limit = setTimeout(() => { if (["loading", "slow"].includes(this.status)) { this.worker?.terminate(); this.fail(); } }, this.cached ? 40000 : 600000);
+    this.timers.limit = setTimeout(() => { if (["loading", "slow"].includes(this.status)) { this.worker?.terminate(); this.fail(); } }, this.cached ? 40000 : 1200000);
     this.worker = new Worker("js/python-worker.js");
     this.worker.onmessage = (e) => {
       const m = e.data;
@@ -123,9 +123,9 @@ const py = {
         if (m.id != null && this.pending.has(m.id)) { this.pending.get(m.id)({ ok: false, kind: "setup" }); this.pending.delete(m.id); this.start(); return; }
         if (this.status === "ready") return;
         if (/no-wasm/.test(m.error || "")) { this.noWasm = true; this.attempts = 3; }
-        const bad = (m.error || "").match(/bad-file(?::([\w.-]+))?/);
-        if (bad) { this.badFile = this.cached ? "saved" : "download"; forgetSavedPython(bad[1]); }
-        if (/cut-off/.test(m.error || "")) this.cutOff = true;
+        const bad = (m.error || "").match(/bad-file(?::([\w.-]+))?/), offline = navigator.onLine === false;
+        if (bad && !offline) { this.badFile = this.cached ? "saved" : "download"; forgetSavedPython(bad[1]); }
+        if (/cut-off/.test(m.error || "") || (bad && offline)) this.cutOff = true;
         this.worker?.terminate(); this.fail();
       }
     };
@@ -139,9 +139,9 @@ const py = {
     this.clear();
     this.attempts++;
     this.set("failed");
-    if (this.attempts <= 2) this.timers.retry = setTimeout(() => this.start(), [3000, 8000][this.attempts - 1]);
+    if (this.attempts <= 2) this.timers.retry = setTimeout(() => this.start(), [3000, 8000][this.attempts - 1]);   // quick retries; Try again re-runs the downloader
   },
-  retryNow() { this.attempts = 0; this.blocked = false; this.badFile = false; this.cutOff = false; this.start(); },
+  retryNow() { this.attempts = 0; this.blocked = false; this.badFile = false; this.cutOff = false; resumePython(); },
   get autoRetrying() { return this.status === "failed" && this.attempts <= 2; },
   run(src) {
     const id = ++this.seq;
@@ -170,7 +170,9 @@ async function forgetSavedPython(name) {
   try { for (const k of await caches.keys()) if (k.startsWith("cq-vendor")) { const c = await caches.open(k); for (const u of which) await c.delete(u); } } catch {}
   py.cached = false; const n = $("#offline-note"); if (n) n.hidden = true;
 }
-const progressText = () => py.progress ? `Downloading Python: ${(py.progress.got / 1e6).toFixed(1)} of ${(py.progress.total / 1e6).toFixed(1)} MB.` : "";
+const progressText = () => py.progress ? `Downloading Python: ${(py.progress.got / 1e6).toFixed(1)} of ${(py.progress.total / 1e6).toFixed(1)} MB.${py.progress.waiting ? " The Wi-Fi dropped. It picks up again by itself when the connection is back." : ""}` : "";
+// Wait a while, or less if the laptop reconnects to the Wi-Fi first.
+const napOrOnline = (ms) => new Promise((r) => { const done = () => { clearTimeout(t); removeEventListener("online", done); r(); }; const t = setTimeout(done, ms); addEventListener("online", done); });
 async function allSaved() {
   try { return (await Promise.all(VENDOR_FILES.map((u) => caches.match(u)))).every(Boolean); } catch { return false; }
 }
@@ -203,18 +205,30 @@ async function saveFile(cache, u, onBytes, stallMs = 45000) {
 async function savePython() {
   const cache = await caches.open(SAVED.cache);
   const missing = [];
-  let got = 0, told = 0;
+  let got = 0, told = 0, lastByte = Date.now(), waiting = false;
   for (const u of VENDOR_FILES) if (await cache.match(u)) got += SAVED.files[u].bytes; else missing.push(u);
   const tell = (force) => {
-    py.progress = { got: Math.min(got, SAVED_BYTES), total: SAVED_BYTES, at: Date.now() };
+    py.progress = { got: Math.min(got, SAVED_BYTES), total: SAVED_BYTES, at: lastByte, waiting };
     if (!force && Date.now() - told < 700) return;
     told = Date.now(); const el = $(".fb-progress"); if (el) el.textContent = progressText();
   };
   if (missing.length) tell(true);
   try {
     for (const u of missing) {
-      let how = "cut";
-      for (let i = 0; i < 3 && how === "cut"; i++) { if (i) await wait(1500); how = await saveFile(cache, u, (n) => { got += n; tell(); }); }
+      let how, tries = 0, best = 0, strikes = 0;
+      for (;;) {
+        let mine = 0;
+        how = await saveFile(cache, u, (n) => { got += n; if (n > 0) { lastByte = Date.now(); mine += n; } tell(); });
+        if (how !== "cut") break;
+        // A Wi-Fi drop or stall: wait a little longer each time (or until the laptop reconnects), then pick up again.
+        // It ends after 3 minutes with no new bytes at all, or when the file keeps breaking off no further than before
+        // (a proxy or filter, not a passing drop). Then the student sees what happened and can get help.
+        if (mine > best) { best = mine; strikes = 0; } else if (mine > 0 && ++strikes >= 3) break;
+        if (Date.now() - lastByte > 180000) break;
+        waiting = true; tell(true);
+        await napOrOnline([2000, 5000, 15000, 30000][Math.min(tries++, 3)]);
+        waiting = false; tell(true);
+      }
       if (how !== "ok") return;
     }
   } finally { py.progress = null; py.savedAt = Date.now(); }
@@ -225,7 +239,7 @@ async function pythonReachable() {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), 15000);
   try { const r = await fetch("vendor/pyodide/pyodide.asm.wasm", { method: "HEAD", signal: ctl.signal }); r.body?.cancel?.(); return r.ok ? "ok" : "blocked"; }
-  catch (e) { return e.name === "AbortError" ? "slow" : "blocked"; }
+  catch (e) { return e.name === "AbortError" ? "slow" : "unreachable"; }   // no connection: a Wi-Fi drop, not a filter
   finally { clearTimeout(t); }
 }
 async function startPython() {
@@ -237,6 +251,23 @@ async function startPython() {
     const quiet = Date.now() - (py.progress?.at || py.savedAt || py.startedAt);
     if (!py.offerHelp && (Date.now() - py.startedAt > 180000 || quiet > 90000)) { py.offerHelp = true; py.listeners.forEach((f) => f(py.status)); }
   }, 5000);
+  // A browser that can't run WebAssembly can't run Python: say so now, not after a 12 MB download.
+  if (typeof WebAssembly !== "object") { py.noWasm = true; py.attempts = 3; py.set("failed"); return; }
+  await resumePython();
+}
+// Load Python, first saving any missing files on this laptop. Also used by the automatic retries and Try again,
+// so a laptop whose download broke off picks it up again instead of starting a second, unsaved one.
+async function resumePython() {
+  if (py.resuming) return;
+  py.resuming = true;
+  try {
+    py.clear();
+    await loadPython();
+  } finally { py.resuming = false; }
+}
+// Back on the Wi-Fi after a drop broke the download: pick up again without waiting for a click.
+addEventListener("online", () => { if (py.status === "failed" && py.cutOff) py.retryNow(); });
+async function loadPython() {
   py.set("checking");
   const reg = swReg ? await swReg.catch(() => null) : null;   // no service worker (blocked, or plain http): Python loads straight from the network
   if (reg && !(await allSaved())) {
@@ -569,9 +600,12 @@ function skillChipsHtml() {
 function dataView() {
   const mine = DATA.byRole[state.role];
   const clean = (j) => cleanTitle(j.title).length < 40;
-  const sample = mine.find((j) => j.skills.length >= 3 && j.skills.length <= 5 && clean(j) && j.skills.some((s) => ["sql", "python"].includes(s)))
-    || mine.find((j) => j.skills.length >= 3 && j.skills.length <= 5 && clean(j)) || mine[0];
-  const top6 = ranked(mine.reduce((acc, j) => (j.skills.forEach((s) => (acc[s] = (acc[s] || 0) + 1)), acc), {})).slice(0, 6).map(([s]) => s).sort();
+  const byCount = ranked(mine.reduce((acc, j) => (j.skills.forEach((s) => (acc[s] = (acc[s] || 0) + 1)), acc), {}));
+  // The example posting should look typical for this career: every skill on it is one of the career's 12 most common.
+  const common = new Set(byCount.slice(0, 12).map(([s]) => s));
+  const fits = (j) => j.skills.length >= 3 && j.skills.length <= 5 && clean(j), coding = (j) => j.skills.some((s) => ["sql", "python"].includes(s));
+  const sample = mine.find((j) => fits(j) && coding(j) && j.skills.every((s) => common.has(s))) || mine.find((j) => fits(j) && coding(j)) || mine.find(fits) || mine[0];
+  const top6 = byCount.slice(0, 6).map(([s]) => s).sort();
   const rec = `{"role": ${JSON.stringify(sample.role)},\n "title": ${JSON.stringify(cleanTitle(sample.title))},\n "skills": [${sample.skills.map((s) => JSON.stringify(s)).join(", ")}]}`;
   const sel = top6.includes(state.prediction) ? state.prediction : "";
   return `<p class="eyebrow">Before you code</p>
@@ -647,12 +681,12 @@ function renderStuck(ch, { noPython = false, slow = false } = {}) {
     <p>You can keep waiting: the game switches on by itself when it's ready. Short on time? Raise your hand, or use <strong>Unlock with help</strong> next to Run to keep building your city. You get 0 points for this level, and your portfolio will say a helper unlocked it.</p></div>`
     : noPython
     ? `<div class="stuck-card" id="stuck-why"><p class="fb-title">Python can't run on this laptop right now.</p>
-    <p>Raise your hand: a helper can try the backup. If that doesn't work, use <strong>Unlock with help</strong> next to Run to keep building your city. You get 0 points for this level, and your portfolio will say a helper unlocked it.</p></div>`
+    <p>If a helper can't get Python going, use <strong>Unlock with help</strong> next to Run to keep building your city. You get 0 points for this level, and your portfolio will say a helper unlocked it.</p></div>`
     : `<div class="stuck-card" id="stuck-why"><p class="fb-title">Still stuck? That's normal.</p>
     <p>Raise your hand and a helper will come over. Short on time? Use <strong>Unlock with help</strong> next to Run to keep building your city. You get 0 points for this level, and your portfolio will say a helper unlocked it.</p></div>`;
   slot.innerHTML = `<button type="button" class="btn-small btn-help" id="help-unlock" aria-describedby="stuck-why">Unlock with help</button>`;
   $("#help-unlock").addEventListener("click", (e) => { if (arm(e.currentTarget, "Click again to unlock for 0 points")) helpUnlock(ch); });
-  announce("Still stuck? That's normal. Raise your hand, or unlock this level with help for 0 points.");
+  announce(slow ? "Python is still downloading. You can keep waiting, or unlock this level with help for 0 points." : noPython ? "You can unlock this level with help for 0 points." : "Still stuck? That's normal. Raise your hand, or unlock this level with help for 0 points.");
 }
 
 function unlockedView() {
@@ -833,7 +867,7 @@ function bindLeft(phase) {
           showFeedback("err", "Python couldn't load.", py.noWasm ? "This browser can't run Python: a feature it needs is turned off. Raise your hand: a helper can move you to another browser or laptop."
             : py.badFile === "saved" ? "This laptop's saved copy of Python was damaged, so it was cleared. Connect to Wi-Fi and Try again to download a fresh copy, or raise your hand."
             : py.badFile ? `The game's Python file arrived damaged, often because a web filter replaced it. ${HELP_NEXT}`
-            : py.cutOff ? "The Python download was cut off partway, usually by a Wi-Fi drop. Check the Wi-Fi and press Try again, or raise your hand."
+            : py.cutOff ? (navigator.onLine === false ? "This laptop lost the Wi-Fi before Python finished downloading. It picks up again by itself when the Wi-Fi is back, or press Try again." : "The Python download was cut off partway, usually by a Wi-Fi drop. Check the Wi-Fi and press Try again, or raise your hand.")
             : py.blocked ? `The Wi-Fi or a web filter is blocking the game's Python file. ${HELP_NEXT}`
             : "Python didn't start. Try again, and if it still fails, raise your hand.", { retry: !py.noWasm, tech: py.noWasm ? "For the helper: WebAssembly is turned off or missing in this browser." : "" });
           renderStuck(ch, { noPython: true });
@@ -1311,15 +1345,15 @@ function guardTabs() {
     if (m.type === "hello" || m.type === "here") { note.hidden = false; otherTabOpen = true; }
     if (m.type === "bye" && !paused) note.hidden = true;
     if (m.type === "bye" && paused) note.querySelector("p").textContent = "The other Career Quest tab was closed. Press Play in this tab to keep going here with your latest progress.";
-    if (m.type === "takeover") { paused = true; $("main").inert = true; $("#hud").inert = true; note.hidden = false; note.querySelector("p").textContent = "Career Quest is now open in another tab, so this tab is paused to protect your progress."; }
+    if (m.type === "takeover") { paused = true; document.body.dataset.paused = "1"; $("main").inert = true; $("#hud").inert = true; note.hidden = false; note.querySelector("p").textContent = "Career Quest is now open in another tab, so this tab is paused to protect your progress."; }
   };
   ch.postMessage({ type: "hello", from: me });
   addEventListener("pagehide", () => ch.postMessage({ type: "bye", from: me }));
   // Whichever tab enters the game becomes the one that plays: any other open tab pauses and stops saving.
-  claimTab = () => ch.postMessage({ type: "takeover", from: me });
+  claimTab = () => { ch.postMessage({ type: "takeover", from: me }); if (!paused) note.hidden = true; };
   $("#tab-here").addEventListener("click", () => {
-    claimTab();
-    paused = false; $("main").inert = false; $("#hud").inert = false; note.hidden = true;
+    paused = false; delete document.body.dataset.paused; claimTab();
+    $("main").inert = false; $("#hud").inert = false; note.hidden = true;
     state = loadState();
     if (state.playerId && state.role) enterGame(); else { show("title"); renderTitle(); }
   });

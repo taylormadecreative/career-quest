@@ -21,7 +21,7 @@ export function check(level, rep, ctx) {
       return { pass: true, result: { n: m.n, total: ctx.total, role: ctx.role, titles: [...new Set(m.titles)].slice(0, 6) } };
     if (m.n === 0) return { pass: false, msg: "Your filter kept 0 postings. Is it reading the career you picked, or a fixed piece of text? Look back at line 1." };
     if (m.n === ctx.total) return { pass: false, msg: "Your filter kept every posting, not just the ones for your career. What should the filter compare each job's role to?" };
-    return { pass: false, msg: `Your filter kept ${m.n} postings, but not the right set for ${ctx.role}. What should the filter compare each job's role to?` };
+    return { pass: false, msg: `Your filter kept ${m.n} posting${m.n === 1 ? "" : "s"}, but not the right set for ${ctx.role}. What should the filter compare each job's role to?` };
   }
   if (level === 2) {
     if (rep.counts_bad_type) return { pass: false, msg: "counts needs to stay a dictionary of skills and totals. Click Reset line to start over." };
@@ -69,6 +69,9 @@ export function friendlyError(rep, level, src = "") {
     if (/U\+00A0|U\+200B/.test(m)) return { title: "Your line has a hidden special space.", detail: "It usually comes from pasting. Delete the spaces in the yellow line and type them again.", tech };
     if (/never closed|unmatched|does not match/.test(m)) return { title: "A bracket doesn't have a partner.", detail: "Count the ( ) and [ ] in the yellow line. Every opening bracket needs a closing one.", tech };
     const single = level === 1 && rep.line === 3 && /(^|[^=!<>])=($|[^=])/.test(rep.text || "");
+    // Levels 2 and 3 store a value: "cannot assign" there means the left side of = isn't a place Python can store into.
+    if (level !== 1 && /cannot assign to/.test(m))
+      return { title: "Python can't store a value there.", detail: level === 2 ? "The left side of = is where the new count goes. Round brackets and .get() can only look a count up, not store one. Click Reset line to see how the original line stores it." : "The left side of = must be the name that stores your answer. Click Reset line to see how the original line does it.", tech };
     if (single || /Maybe you meant '=='|cannot assign to/.test(m)) return { title: "To compare two things, use two equals signs.", detail: "One = stores a value in a name. Two == checks whether two things are equal. Which one does a filter need?", tech };
     if (/unterminated string|EOL/.test(m)) return { title: "A quote mark is missing its partner.", detail: "Text in quotes needs a quote mark at the start and one at the end.", tech };
     return { title: "Python couldn't read your line.", detail: "Look for a missing or extra quote, bracket or symbol in the yellow line. Reset line brings back the original.", tech };
