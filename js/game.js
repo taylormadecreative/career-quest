@@ -516,6 +516,8 @@ function renderTitle() {
   $("#player-id-lbl").textContent = has ? "Not you? Type your player ID" : "Your player ID";
   $("#player-id").value = has ? "" : state.playerId || "";
   $("#title-new").hidden = false;
+  // DEMO is for trying the game (helpers, Jamal, visitors): it can start over. Real player IDs can't be erased from here.
+  const restart = $("#title-restart"); restart.hidden = !(has && state.playerId === "DEMO"); disarm(restart);
   $("#player-id-err").hidden = true;
 }
 // Two-step confirm for anything that erases progress (no pop-up dialogs).
@@ -1439,6 +1441,16 @@ function boot() {
     if (DATA) enterGame();
   });
   $("#title-new").addEventListener("click", () => { $(".title-form").hidden = false; $("#title-new").hidden = true; $("#player-id").focus(); });
+  $("#title-restart").addEventListener("click", async (e) => {
+    if (!arm(e.currentTarget, "Click again to erase DEMO's progress")) return;
+    disarm(e.currentTarget);
+    freshState();
+    if (state.playerId !== "DEMO") { renderTitle(); return; }   // another tab switched players: show that instead
+    await dataReady; if (!DATA) return;
+    state = { ...fresh(), playerId: "DEMO" }; store.remove("career-quest.data");
+    enterGame();
+    announce("Started over as DEMO.");
+  });
   $("#player-id").addEventListener("input", () => { pendingId = ""; $("#player-id-err").hidden = true; });
   $("#btn-draft").addEventListener("click", saveDraft);
   const resume = !!(state.playerId && state.role);
