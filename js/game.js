@@ -1486,9 +1486,18 @@ function boot() {
     swReg.catch(() => {});
     // A newer version saved on a past visit takes over now, while the title is showing, then the page reloads once.
     updateDecided = swReg.then(async (reg) => {
-      if (!reg.waiting || !navigator.serviceWorker.controller) return;
+      if (!navigator.serviceWorker.controller) return;          // first visit: nothing to switch from
+      // Look for a newer version now and give it a few seconds to save, so the FIRST open after an update
+      // switches to it (otherwise it would only show on the open after that).
+      if (!reg.waiting) {
+        await Promise.race([reg.update().catch(() => {}), wait(2500)]);
+        const w = reg.installing;
+        if (w) await Promise.race([new Promise((r) => w.addEventListener("statechange", () => ["installed", "redundant"].includes(w.state) && r())), wait(4000)]);
+      }
+      if (!reg.waiting) return;
       await wait(500);                 // give the tab guard time to hear from any other open tab
-      if (otherTabOpen) return;        // another tab is running this version: wait until it closes
+      // Never switch under another open tab, or once this tab has left the title screen: a started game keeps its version.
+      if (otherTabOpen || state.screen !== "title") return;
       navigator.serviceWorker.addEventListener("controllerchange", () => location.reload(), { once: true });
       reg.waiting.postMessage("skip-waiting");
       await wait(4000);                // the page reloads before this ends
