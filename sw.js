@@ -1,13 +1,13 @@
 // Keeps a full copy of Career Quest on each laptop after one visit, so bad venue Wi-Fi can't stop it.
 // VERSION is the one place to bump when the game changes.
-const VERSION = "cq-v49";
+const VERSION = "cq-v66";
 // Python and the fonts never change between game versions, so they live in their own cache:
 // bumping VERSION re-downloads the small game files, not the 12 MB Python runtime.
 importScripts("js/saved-files.js");   // the Python and font files, with their fingerprints (self.CQ_SAVED)
 const VENDOR = self.CQ_SAVED.cache;
 const VENDOR_FILES = Object.keys(self.CQ_SAVED.files);
 const CORE = [
-  "./", "index.html", "css/game.css", "js/game.js", "js/content.js", "js/portfolio-export.js", "js/program.js", "js/buildings.js", "js/rules.js",
+  "./", "index.html", "starter.html", "quests.html", "css/quests.css", "js/quests.js", "js/quest-progress.js", "js/starter-program.js", "js/portfolio-program.js", "js/structured-portfolio.js", "js/portfolio-bundle.js", "js/first-run-content.js", "js/first-run-rules.js", "js/first-run-worker.js", "js/level1-quests.js", "js/level2-quests.js", "js/level3-quests.js", "css/game.css", "css/starter.css", "js/starter.js", "js/game.js", "js/content.js", "js/portfolio-export.js", "js/program.js", "js/buildings.js", "js/rules.js",
   "js/python-worker.js", "js/saved-files.js", "data/jobs-2023.json", "data/fictional-offline-demo.json",
 ];
 

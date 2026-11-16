@@ -217,3 +217,66 @@ export function download(filename, text, type = "text/html") {
   document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
+
+// The Level 1 portfolio has its own data and unlocks.  It deliberately does not
+// infer achievements, dates, or results from the original job-data project.
+export function starterPortfolioHtml(state = {}, { draft = true, font = "" } = {}) {
+  const p = state.starterPortfolio || {};
+  const flags = state.starterUnlocked || {};
+  const unlocked = Object.fromEntries(["header", "skills", "stats", "experience", "nextStep"].map((key) => [key, flags[key] === true]));
+  const text = (value) => typeof value === "string" ? value.trim() : "";
+  const list = (value) => Array.isArray(value) ? value : [];
+  const header = p.header || {};
+  const name = unlocked.header ? text(header.name) : "";
+  const headline = unlocked.header ? text(header.headline) : "";
+  const links = unlocked.header ? [
+    [normalizeUrl(header.linkedin, "linkedin.com"), "LinkedIn"],
+    [normalizeUrl(header.github, "github.com"), "GitHub"],
+  ].filter(([url]) => url).map(([url, label]) => `<a href="${esc(url)}" rel="noopener noreferrer">${label}</a>`).join(" · ") : "";
+  const locked = (label) => `<p class="locked">${esc(label)} is locked until its quest is completed.</p>`;
+  const empty = (label) => `<p class="empty">No ${esc(label)} added yet.</p>`;
+  const skills = list(p.skills).map(text).filter(Boolean);
+  const stats = list(p.stats).filter((s) => s && text(s.label) && (typeof s.value === "number" && Number.isFinite(s.value) || text(s.value)));
+  const experience = list(p.experience).filter((item) => item && [item.title, item.organization, item.description].some((v) => text(v)));
+  // Education and projects share the experience unlock. Every card contains
+  // only details the student supplied, including optional links.
+  const education = list(p.education).filter((item) => item && [item.school, item.qualification, item.detail].some((v) => text(v)));
+  const projects = list(p.projects).filter((item) => item && ([item.title, item.description].some((v) => text(v)) || normalizeUrl(item.link)));
+  const next = p.nextStep || {};
+  const nextText = text(next.text);
+  const date = text(next.date);
+  const dateHtml = date ? (/^\d{4}-\d{2}-\d{2}$/.test(date) ? `<time datetime="${esc(date)}">${esc(date)}</time>` : esc(date)) : "";
+  // Accept the Python-generated section only if it is exactly the safe section
+  // for the current text. Saved browser state is not trusted as HTML.
+  const pythonEsc = (value) => value.replace(/[&<>"']/g, (ch) => ({"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#x27;"}[ch]));
+  const expectedSection = `<section><h2>My next step</h2><p>${pythonEsc(nextText)}</p></section>\n`;
+  const ship = state.completed?.["1.8"];
+  const verifiedSection = nextText && ship?.personal === nextText && ship?.result?.html === expectedSection && ship?.output === expectedSection
+    ? ship.result.html.slice(0, -1).replace("</section>", `${dateHtml ? `<p class="date">${dateHtml}</p>` : ""}</section>`)
+    : "";
+  // A font is embedded only when it is a data URL, matching the document CSP.
+  const face = /^data:font\/woff2;base64,[A-Za-z0-9+/=]+$/.test(font) ? `@font-face{font-family:Nunito;src:url(${font}) format("woff2");font-weight:600 900}` : "";
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; font-src data:">
+<title>${name ? `${esc(name)} | ` : ""}Starter Portfolio${draft ? " (draft)" : ""}</title>
+<style>${face}
+:root{--ink:#1d2246;--muted:#535a73;--line:#e4e0d4;--paper:#fbfaf6;--blue:#1747b0;--gold:#f6cf47}
+*{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.6 Nunito,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow-wrap:anywhere}
+.band{background:var(--blue);color:#fdfbf4;print-color-adjust:exact}.inner,main{max-width:880px;margin:auto;padding-left:28px;padding-right:28px}.inner{padding-top:42px;padding-bottom:34px}
+h1{font-size:clamp(2rem,6vw,2.75rem);line-height:1.1;margin:0 0 8px}h2{font-size:1.4rem;line-height:1.2;margin:0 0 14px}.headline{font-size:1.15rem;margin:8px 0}.band a{color:inherit}.draft{display:inline-block;border:2px solid var(--gold);border-radius:6px;padding:2px 10px;font-weight:800}
+main{padding-top:30px;padding-bottom:50px}section{margin:0 0 30px}p{margin:8px 0}.locked,.empty{color:var(--muted)}.band .locked,.band .empty{color:#fff}.chips{display:flex;flex-wrap:wrap;gap:8px}.chip{padding:5px 12px;background:#fffdf8;border:1.5px solid var(--line);border-radius:999px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:12px}.card{border:2px solid var(--line);background:#fffdf8;border-radius:14px;padding:16px}.card p{white-space:pre-wrap}.stat-value{font-size:1.5rem;font-weight:800}.stat-label{color:var(--muted)}.experience-title{font-weight:800}.date{color:var(--muted)}footer{border-top:1px solid var(--line);padding-top:16px;color:var(--muted);font-size:.85rem}
+@media print{body{background:white;font-size:13pt}.band{print-color-adjust:exact}section,.card{break-inside:avoid}.inner,main{padding-left:16px;padding-right:16px}}
+</style></head><body><header class="band"><div class="inner">
+${draft ? '<p class="draft">Draft portfolio</p>' : ""}
+${unlocked.header ? `<h1>${esc(name || "Starter Portfolio")}</h1>${headline ? `<p class="headline">${esc(headline)}</p>` : ""}${links ? `<p>${links}</p>` : ""}` : `<h1>Starter Portfolio</h1>${locked("Header")}`}
+</div></header><main>
+<section><h2>Skills</h2>${!unlocked.skills ? locked("Skills") : skills.length ? `<div class="chips">${skills.map((s) => `<span class="chip">${esc(s)}</span>`).join("")}</div>` : empty("skills")}</section>
+<section><h2>My numbers</h2>${!unlocked.stats ? locked("Stats") : stats.length ? `<div class="cards">${stats.map((s) => `<article class="card"><p class="stat-value">${esc(s.value)}</p><p class="stat-label">${esc(s.label)}</p></article>`).join("")}</div>` : empty("stats")}</section>
+<section><h2>Experience</h2>${!unlocked.experience ? locked("Experience") : experience.length ? `<div class="cards">${experience.map((e) => `<article class="card">${text(e.title) ? `<p class="experience-title">${esc(text(e.title))}</p>` : ""}${text(e.organization) ? `<p>${esc(text(e.organization))}</p>` : ""}${text(e.description) ? `<p>${esc(text(e.description))}</p>` : ""}</article>`).join("")}</div>` : empty("experience")}</section>
+<section><h2>Education</h2>${!unlocked.experience ? locked("Education") : education.length ? `<div class="cards">${education.map((e) => `<article class="card">${text(e.school) ? `<p class="experience-title">${esc(text(e.school))}</p>` : ""}${text(e.qualification) ? `<p>${esc(text(e.qualification))}</p>` : ""}${text(e.detail) ? `<p>${esc(text(e.detail))}</p>` : ""}</article>`).join("")}</div>` : empty("education")}</section>
+<section><h2>Projects</h2>${!unlocked.experience ? locked("Projects") : projects.length ? `<div class="cards">${projects.map((e) => { const url = normalizeUrl(e.link); return `<article class="card">${text(e.title) ? `<p class="experience-title">${esc(text(e.title))}</p>` : ""}${text(e.description) ? `<p>${esc(text(e.description))}</p>` : ""}${url ? `<p><a href="${esc(url)}" rel="noopener noreferrer">View project</a></p>` : ""}</article>`; }).join("")}</div>` : empty("projects")}</section>
+${unlocked.nextStep && verifiedSection ? verifiedSection : `<section><h2>My next step</h2>${!unlocked.nextStep ? locked("Next step") : nextText || dateHtml ? `<div class="card">${nextText ? `<p>${esc(nextText)}</p>` : ""}${dateHtml ? `<p class="date">${dateHtml}</p>` : ""}</div>` : empty("next step")}</section>`}
+<footer>Made in Career Quest.</footer></main></body></html>`;
+}

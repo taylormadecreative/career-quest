@@ -142,6 +142,28 @@ body[data-screen="game"] .islet { display: none; } .i5 { bottom: 8%; right: 34%;
 .ex-tag { font: 900 11px/1.7 Nunito, system-ui, sans-serif; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
 .ex-result { grid-column: 2; font: 700 13.5px/1.5 Nunito, system-ui, sans-serif; color: var(--ink-2); white-space: normal; }
 .brief-ex .ex-note { margin-top: 8px; }
+.brief-wrong { margin-top: 8px !important; color: var(--ink); }
+.brief-more { margin-top: 10px; }
+/* pick-the-fix: the blank in the code line, and the choices under it */
+.blank { display: inline-block; min-width: 3.2ch; margin: 0 2px; padding: 0 8px; border-radius: 8px; text-align: center; background: var(--paper); box-shadow: inset 0 0 0 2px oklch(0.52 0.12 70); color: var(--ink-2); font-weight: 800; }
+.blank.is-filled { color: var(--ink); }
+.ln-pick .edit-hidden { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.picks { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; }
+.picks-lbl { flex: 1 0 100%; font-size: 16px; font-weight: 900; color: var(--ink); }
+.pick { min-height: 52px; padding: 0 22px; border: 2px solid var(--edge-strong); border-radius: 14px; background: var(--paper); cursor: pointer;
+  font: 700 18px/1 "JetBrains Mono", ui-monospace, monospace; font-variant-ligatures: none; color: var(--ink);
+  box-shadow: 0 3px 0 var(--edge-strong); transition: transform 140ms var(--ease), border-color 140ms, background-color 140ms; }
+.pick code { font: inherit; }
+.pick:hover:not(:disabled) { border-color: var(--c-blue); }
+.pick:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 var(--edge-strong); }
+.pick[aria-pressed="true"] { border-color: var(--c-blue); box-shadow: 0 3px 0 var(--c-blue); }
+.pick.is-tried { opacity: 0.55; text-decoration: line-through; text-decoration-thickness: 2px; }
+.pick.is-right { background: var(--ok); border-color: var(--ok-line); box-shadow: 0 3px 0 var(--ok-line); opacity: 1; }
+.pick:disabled:not(.is-right) { cursor: default; opacity: 0.5; }
+.type-own { margin-left: auto; font-size: 15px; }
+.type-own-inline { padding: 0 4px; font-size: 15px; }
+.chip-desc { display: block; margin-top: 2px; font-size: 12.5px; font-weight: 600; opacity: 0.8; }
+.d-desc { display: block; margin-left: 34px; font-size: 13.5px; color: var(--ink-2); }
 .help { display: block; margin: 6px 0 0; font-size: 16.5px; color: var(--ink-2); font-weight: 600; }
 .limit { display: block; margin-top: 6px; font-size: 14.5px; font-weight: 700; color: var(--ink-2); }
 .limit.at-max { color: var(--c-orange-d); font-weight: 800; }
@@ -375,11 +397,11 @@ input[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--
   padding: 0; border: 0; background: none; cursor: pointer; color: inherit; font: inherit; }
 .badge { --shadow: transparent; }
 .bldg[data-state="open"], .badge { --bw: var(--win); }
-.b-summary:is(.badge, [data-state="open"]) { --b: var(--sum-b); --bs: var(--sum-s); --br: var(--sum-r); --bf: var(--sum-f); }
-.b-explorer:is(.badge, [data-state="open"]) { --b: var(--exp-b); --bs: var(--exp-s); --br: var(--exp-r); --bf: var(--exp-f); }
-.b-chart:is(.badge, [data-state="open"]) { --b: var(--cha-b); --bs: var(--cha-s); --br: var(--cha-r); --bf: var(--cha-f); }
-.b-strategy:is(.badge, [data-state="open"]) { --b: var(--str-b); --bs: var(--str-s); --br: var(--str-r); --bf: var(--str-f); }
-.b-built:is(.badge, [data-state="open"]) { --b: var(--blt-b); --bs: var(--blt-s); --br: var(--blt-r); --bf: var(--blt-f); }
+:is(.b-summary, .b-header):is(.badge, [data-state="open"]) { --b: var(--sum-b); --bs: var(--sum-s); --br: var(--sum-r); --bf: var(--sum-f); }
+:is(.b-explorer, .b-experience):is(.badge, [data-state="open"]) { --b: var(--exp-b); --bs: var(--exp-s); --br: var(--exp-r); --bf: var(--exp-f); }
+:is(.b-chart, .b-stats):is(.badge, [data-state="open"]) { --b: var(--cha-b); --bs: var(--cha-s); --br: var(--cha-r); --bf: var(--cha-f); }
+:is(.b-strategy, .b-nextStep):is(.badge, [data-state="open"]) { --b: var(--str-b); --bs: var(--str-s); --br: var(--str-r); --bf: var(--str-f); }
+:is(.b-built, .b-skills):is(.badge, [data-state="open"]) { --b: var(--blt-b); --bs: var(--blt-s); --br: var(--blt-r); --bf: var(--blt-f); }
 .b-art { display: block; width: 124%; margin-inline: -12%; height: calc(var(--scene-h) * 0.6); height: 66cqh; clip-path: inset(-80% -60% 0 -60%); }
 .b-art svg { display: block; width: 100%; height: 100%; overflow: visible; transition: transform 180ms var(--ease); }
 .b-sign { position: absolute; z-index: 4; bottom: 3%; left: 50%; translate: -50% 0; width: max-content; max-width: 104%; padding: 2px 8px; border-radius: 8px; white-space: nowrap;
@@ -502,10 +524,12 @@ body[data-paused] main, body[data-paused] .hud { opacity: 0.45; filter: saturate
   /* signs take turns high and low, so full words fit on a phone-width city without touching */
   .b-explorer .b-sign, .b-strategy .b-sign { bottom: 21%; }
   .b-summary .b-sign { left: 2px; translate: 0 0; }
+  .b-skills .b-sign, .b-experience .b-sign { bottom: 21%; }
+  .b-header .b-sign { left: 2px; translate: 0 0; }
 }
 @media (max-width: 560px) {
   .b-sign { font-size: 13px; padding: 1px 5px; max-width: none; line-height: 1.1; }
-  .b-chart .b-sign, .b-built .b-sign { white-space: normal; width: min-content; }
+  .b-chart .b-sign, .b-built .b-sign, .b-nextStep .b-sign { white-space: normal; width: min-content; }
   .island { left: 4%; right: 4%; }
   .screen-game { padding: 10px 8px; gap: 10px; }
   .left { --pad-x: 16px; --pad-t: 18px; --pad-b: 18px; }
@@ -573,6 +597,11 @@ body[data-paused] main, body[data-paused] .hud { opacity: 0.45; filter: saturate
   .stuck-card p { font-size: 15.5px; line-height: 1.4; }
   .fb-retry { margin-top: 6px; min-height: 38px; }
   .feedback p:not(.fb-title):not(.fb-tech) { font-size: 15.5px; line-height: 1.42; }
+  /* pick mode: label and choices share one row, so the pinned code area stays short */
+  .picks { margin-top: 8px; gap: 8px; }
+  .picks-lbl { flex: none; margin-right: 4px; font-size: 15px; }
+  .pick { min-height: 42px; padding: 0 16px; font-size: 16px; }
+  .work .actions { margin-top: 10px; }
 }
 .learn-more { margin-top: 18px; background: transparent; box-shadow: inset 0 0 0 2px var(--edge); }
 .think { font-size: 16px; color: var(--ink-2); }

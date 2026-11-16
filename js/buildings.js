@@ -78,8 +78,20 @@ const ART = {
 };
 const LOCK_AT = { summary: [57, 118], explorer: [57, 122], chart: [93, 112], strategy: [61, 112], built: [52, 124] };
 
-export function buildingSvg(key, { locked } = {}) {
-  return `<svg viewBox="0 0 130 182" preserveAspectRatio="xMidYMax meet" aria-hidden="true" focusable="false">${ART[key]()}${locked ? lock(...LOCK_AT[key]) : ""}</svg>`;
+// The starter portfolio uses the same toy buildings, but names them for the
+// sections students will build. Each starts locked until its quest is passed.
+export const STARTER_BUILDINGS = [
+  { key: "header", label: "Portfolio header", short: "Header" },
+  { key: "skills", label: "Skill badges", short: "Skills" },
+  { key: "stats", label: "Stat cards", short: "Stats" },
+  { key: "experience", label: "Experience cards", short: "Experience" },
+  { key: "nextStep", label: "Dated next step", short: "Next step" },
+];
+const STARTER_ART = { header: "summary", skills: "built", stats: "chart", experience: "explorer", nextStep: "strategy" };
+
+export function buildingSvg(key, { locked = key in STARTER_ART } = {}) {
+  const artKey = STARTER_ART[key] || key;
+  return `<svg viewBox="0 0 130 182" preserveAspectRatio="xMidYMax meet" aria-hidden="true" focusable="false">${ART[artKey]()}${locked ? lock(...LOCK_AT[artKey]) : ""}</svg>`;
 }
 
 /* ---------- island props ---------- */

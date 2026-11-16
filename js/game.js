@@ -1,4 +1,4 @@
-import { CAREERS, SKILL_CHOICES, BUILDINGS, CHALLENGES, prettySkill, dataWords, cleanTitle } from "./content.js";
+import { CAREERS, SKILL_CHOICES, BUILDINGS, CHALLENGES, prettySkill, skillInfo, dataWords, cleanTitle } from "./content.js";
 import { portfolioHtml, pythonFile, download, tiedOut, normalizeUrl, storyOf, chartOrder } from "./portfolio-export.js";
 import { program } from "./program.js";
 import { buildingSvg, sceneHtml } from "./buildings.js";
@@ -35,7 +35,7 @@ const fresh = () => ({
   playerId: "", displayName: "", headline: "", role: "", skills: [], experience: "", linkedin: "", github: "",
   prediction: "", screen: "title", level: 1, phase: "career", returnPhase: "",
   lines: {}, solved: {}, helped: {}, results: {}, explains: {}, hintsUsed: { 1: 0, 2: 0, 3: 0 }, fails: { 1: 0, 2: 0, 3: 0 },
-  nextStep: "", built: "", builtSaved: false, selected: "summary", dataMode: "",
+  nextStep: "", built: "", builtSaved: false, selected: "summary", dataMode: "", typeMode: false,
 });
 function loadState() {
   let s = null;
@@ -47,6 +47,7 @@ function loadState() {
     if (!out[k] || typeof out[k] !== "object" || Array.isArray(out[k])) out[k] = f[k];
   for (const k of ["playerId", "displayName", "headline", "role", "experience", "linkedin", "github", "prediction", "nextStep", "built", "dataMode", "returnPhase", "selected"])
     if (typeof out[k] !== "string") out[k] = f[k];
+  out.typeMode = out.typeMode === true;
   out.skills = Array.isArray(out.skills) ? out.skills.filter((x) => typeof x === "string") : [];
   for (const k of ["hintsUsed", "fails"]) for (const [kk, v] of Object.entries(out[k])) if (!Number.isInteger(v) || v < 0) delete out[k][kk]; else if (k === "hintsUsed" && v > 3) out[k][kk] = 3;
   if (out.role && !CAREERS.some((c) => c.id === out.role)) Object.assign(out, { role: "", solved: {}, helped: {}, results: {}, phase: "career" });
@@ -420,7 +421,7 @@ function renderDetail() {
     const names = tiedTop.map(prettySkill);
     const found = tiedTop.length > 2 ? `a ${tiedTop.length}-way tie: ${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : tiedTop.length > 1 ? `a tie between ${names.join(" and ")}` : prettySkill(r.top[0]);
     const pred = state.prediction ? (tiedTop.length === 1 && r.top[0] === state.prediction ? `You predicted ${prettySkill(state.prediction)}. ${who} agrees.` : `You predicted ${prettySkill(state.prediction)}. ${who} found ${found}.`) : "";
-    body = `<ol class="d-top">${r.top.map((s, i) => `<li><span class="rank">${i + 1}</span>${esc(prettySkill(s))}<span class="d-muted"> ${r.counts[i]} postings</span></li>`).join("")}</ol>
+    body = `<ol class="d-top">${r.top.map((s, i) => `<li><span class="rank">${i + 1}</span>${esc(prettySkill(s))}<span class="d-muted"> ${r.counts[i]} postings</span>${skillInfo(s) ? `<span class="d-desc">${esc(skillInfo(s))}</span>` : ""}</li>`).join("")}</ol>
       ${ties.length ? `<p class="d-muted">Tied with number 3: ${ties.map((s) => esc(prettySkill(s))).join(", ")}.</p>` : ""}
       ${pred ? `<p class="d-muted">${esc(pred)}</p>` : ""}${helpedNote(3)}
       ${state.nextStep.trim() ? `<p><strong>My next step:</strong> ${esc(state.nextStep.trim())}</p>` : ""}`;
@@ -635,30 +636,35 @@ function dataView() {
   const sel = top6.includes(state.prediction) ? state.prediction : "";
   return `<p class="eyebrow">Before you code</p>
   <h1 class="h1" tabindex="-1">Meet your data</h1>
-  <p class="lead"><strong>JOBS</strong> is a list of <strong>${DATA.jobs.length}</strong> ${esc(words().postings)}. <strong>${mine.length}</strong> of them are ${esc(state.role)} jobs. Each posting looks like this:</p>
+  <p class="lead">This game uses <strong>${DATA.jobs.length}</strong> ${esc(words().postings)}: ads for open jobs. <strong>${mine.length}</strong> of them are for ${esc(state.role)} jobs. Each ad lists the job's role, its title, and the skills it asks for, like this one:</p>
   <pre class="code code-static" role="figure" aria-label="One posting from JOBS">${hl(rec)}</pre>
-  <p class="help">A <strong>list</strong> holds many items in order. Each posting is a <strong>dictionary</strong>: labels like "role" paired with values like "${esc(sample.role)}".
+  <p class="help">In Python, all ${DATA.jobs.length} postings together are called <strong>JOBS</strong>. Each one has labels ("role", "title", "skills"), and each label has a value next to it, like "${esc(sample.role)}".
   ${DATA.mode === "real" ? " The sample mixes full-time and part-time jobs, up to 80 of each per career, so part-time jobs show up far more often here than in real listings." : " This practice set is made up, so the results won't reflect real jobs."}</p>
   <div class="field"><span class="label" id="pred-lbl">Your prediction: which skill shows up most in ${esc(state.role)} postings?</span>
     <div class="chips" role="radiogroup" aria-labelledby="pred-lbl" aria-describedby="pred-help" id="pred-group">
-      ${top6.map((s, i) => `<button type="button" class="chip" role="radio" aria-checked="${sel === s}" tabindex="${sel ? (sel === s ? 0 : -1) : i === 0 ? 0 : -1}" data-pred="${esc(s)}">${esc(prettySkill(s))}</button>`).join("")}
+      ${top6.map((s, i) => `<button type="button" class="chip" role="radio" aria-checked="${sel === s}" tabindex="${sel ? (sel === s ? 0 : -1) : i === 0 ? 0 : -1}" data-pred="${esc(s)}">${esc(prettySkill(s))}${skillInfo(s) ? `<span class="chip-desc">${esc(skillInfo(s))}</span>` : ""}</button>`).join("")}
     </div><span class="help" id="pred-help">No wrong answers. Your code will tell you at the end.</span></div>
   <div class="actions actions-sticky"><button class="btn btn-ghost" id="back-career">Back</button><button class="btn btn-go" id="to-l1" ${sel ? "" : "disabled"} aria-describedby="to-l1-why">${state.solved[1] ? "Back to my quest" : "Start Level 1"}</button><span class="help" id="to-l1-why" ${sel ? "hidden" : ""}>Pick a skill to start.</span></div>`;
 }
 
 // What a beginner reads before the code: the goal, the code line by line in plain English (the bug marked), and the move.
+const briefOf = (ch) => ch.brief({ role: state.role, mine: (DATA.byRole[state.role] || []).length, total: DATA.jobs.length, alt: altRole() || "another career" });
+// What a beginner reads before the code: the goal, what's wrong, and the move, in a few plain sentences.
+// The line-by-line explanation and a worked example sit behind "Show me more".
 function briefHtml(ch) {
-  const b = ch.brief({ role: state.role, mine: (DATA.byRole[state.role] || []).length, total: DATA.jobs.length });
+  const b = briefOf(ch);
   return `<div class="brief" id="level-intro">
     <p class="brief-goal"><span class="brief-k">Goal</span> ${fmt(b.goal)}</p>
-    <p class="brief-k brief-k-block" id="brief-plain">What the code does, line by line <span class="brief-who">Python does these steps when you press Run</span></p>
-    <ol class="brief-lines" aria-labelledby="brief-plain">${b.lines.map((l, i) => `<li${l.bug ? ' class="is-bug"' : ""}><span class="bl-n"><span class="sr-only">Line </span>${i + 1}</span><span${l.bug ? ' id="brief-bug"' : ""}>${fmt(l.text)}${l.bug ? ` <strong class="bl-bug">The bug:</strong> ${fmt(l.bug)}` : ""}</span></li>`).join("")}</ol>
-    <p class="brief-move" id="brief-move"><span class="brief-k">Your move</span> ${fmt(b.move)}</p>
-    ${b.example ? `<details class="brief-ex"><summary>See an example<span class="ex-sub">(same idea, different data)</span></summary>
+    <p class="brief-wrong" id="brief-bug"><span class="brief-k">What's wrong</span> ${fmt(b.wrong)}</p>
+    <p class="brief-move" id="brief-move"><span class="brief-k">Your move</span> ${state.typeMode ? `${fmt(b.move)} <button type="button" class="btn-text type-own-inline" id="type-own">Pick from choices instead</button>` : "Pick what goes in the blank below. Each pick runs the code, so you can see what it does."}</p>
+    <details class="brief-ex brief-more"><summary>Show me more<span class="ex-sub">(what each line does, and an example)</span></summary>
+      <p class="brief-k brief-k-block" id="brief-plain">What the code does, line by line <span class="brief-who">Python does these steps when you press Run</span></p>
+      <ol class="brief-lines" aria-labelledby="brief-plain">${b.lines.map((l, i) => `<li${l.bug ? ' class="is-bug"' : ""}><span class="bl-n"><span class="sr-only">Line </span>${i + 1}</span><span>${fmt(l.text)}${l.bug ? ` <strong class="bl-bug">The bug:</strong> ${fmt(l.bug)}` : ""}</span></li>`).join("")}</ol>
+      ${b.example ? `<p class="brief-k brief-k-block">An example: same idea, different data</p>
       <p class="ex-intro">${fmt(b.example.intro)}</p>
       <div class="ex-code" role="group" aria-label="Example code">${b.example.rows.map((r) => `<div class="ex-row${r.kind ? ` is-${r.kind}` : ""}"><span class="ex-tag">${r.kind === "before" ? "Before" : r.kind === "after" ? "After" : ""}</span><code>${hl(r.code)}</code>${r.result ? `<span class="ex-result">Result: ${esc(r.result)}</span>` : ""}</div>`).join("")}</div>
-      <p class="ex-note">${fmt(b.example.note)}</p>
-    </details>` : ""}
+      <p class="ex-note">${fmt(b.example.note)}</p>` : ""}
+    </details>
   </div>`;
 }
 function codeLines(level) {
@@ -667,6 +673,13 @@ function codeLines(level) {
     const n = i + 1;
     if (!ln.edit) return `<div class="ln"><span class="ln-n" aria-hidden="true">${n}</span><code>${hl(ln.code)}${ln.note ? ` <span class="t-com"># ${esc(ln.note)}</span>` : ""}</code></div>`;
     const val = state.lines[`draft${level}`] ?? ln.start;
+    if (!state.typeMode) {
+      const pk = briefOf(ch).pick, chosen = state.lines[`pick${level}`];
+      const has = pk.choices.some((c) => c.code === chosen);
+      return `<div class="ln ln-edit ln-pick"><span class="ln-n" aria-hidden="true">${n}</span>
+      <span class="indent" style="--i:${ln.indent}"></span><code>${hl(pk.before)}<span class="blank${has ? " is-filled" : ""}" id="blank" aria-label="the blank">${has ? hl(chosen) : "?"}</span>${hl(pk.after)}</code>
+      <input id="edit-line" class="edit edit-hidden" tabindex="-1" aria-hidden="true" value="${esc(has ? pk.before + chosen + pk.after : ln.start)}"></div>`;
+    }
     return `<div class="ln ln-edit"><span class="ln-n" aria-hidden="true">${n}</span>
       <span class="indent" style="--i:${ln.indent}"></span>
       <label class="sr-only" for="edit-line">Line ${n}, the line to fix</label>
@@ -684,12 +697,14 @@ function challengeView() {
   <div class="code-panel">
     <div class="code-head"><span>your_code.py <span class="fix-tip">· fix line ${EDIT_LINE[ch.level]}</span></span><span class="head-r"><span class="py-status" id="py-status"></span></span></div>
     <div class="code" id="code" tabindex="0" role="region" aria-label="your_code.py">${codeLines(ch.level)}</div>
-    <button type="button" class="btn-text btn-reset" id="reset">Reset line</button>
+    <button type="button" class="btn-text btn-reset" id="reset" ${state.typeMode ? "" : "hidden"}>Reset line</button>
   </div>
+  ${state.typeMode ? "" : (() => { const pk = briefOf(ch).pick, chosen = state.lines[`pick${ch.level}`]; return `<div class="picks" role="group" aria-labelledby="picks-lbl"><span class="picks-lbl" id="picks-lbl">Pick what goes in the blank:</span>${pk.choices.map((c, i) => `<button type="button" class="pick" data-pick="${i}" aria-pressed="${chosen === c.code}"><code>${hl(c.code)}</code></button>`).join("")}</div>`; })()}
   <div class="actions">
-    <button class="btn btn-go btn-run" id="run"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4l10 6-10 6z" fill="currentColor"/></svg><span>Run</span></button>
+    <button class="btn btn-go btn-run" id="run" ${state.typeMode ? "" : "hidden"}><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 4l10 6-10 6z" fill="currentColor"/></svg><span>Run</span></button>
     <span id="clue-slot">${clueControl(used)}</span>
     <span id="help-slot"></span>
+    ${state.typeMode ? "" : `<button type="button" class="btn-text type-own" id="type-own">Type it yourself</button>`}
   </div>
   </div>
   <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
@@ -709,7 +724,8 @@ function hintNotes(ch) {
     return `<details class="hint" data-i="${i}" ${newest || !fold ? "open" : ""}><summary class="hint-tier">Hint ${i + 1} of 3 · ${h.tier}</summary><p>${fmt(h.text)}</p>${newest ? `<p class="hint-free">Hints never cost points.</p>${back}` : ""}</details>`;
   }).join("");
 }
-const isStuck = (lvl) => (state.fails[lvl] || 0) >= 5 || ((state.hintsUsed[lvl] || 0) >= 3 && (state.fails[lvl] || 0) >= 2);
+// Typing mode only: with two or three choices to pick from, every student gets there by trying them.
+const isStuck = (lvl) => state.typeMode && ((state.fails[lvl] || 0) >= 5 || ((state.hintsUsed[lvl] || 0) >= 3 && (state.fails[lvl] || 0) >= 2));
 function renderStuck(ch, { noPython = false, slow = false } = {}) {
   const box = $("#stuck"), slot = $("#help-slot");
   if (!box || (!noPython && !isStuck(ch.level)) || state.solved[ch.level]) { if (box && box.dataset.noPython !== "1") { box.innerHTML = ""; if (slot) slot.innerHTML = ""; } return; }
@@ -898,6 +914,9 @@ function bindLeft(phase) {
       st.dataset.s = s;
       st.textContent = { ready: "Python ready", failed: "Python didn't load", slow: "Still loading Python…", saving: "Getting the game ready…" }[s] || "Warming up Python…";
       if (!running) {
+        $$(".pick").forEach((b) => { b.disabled = s !== "ready"; });
+        // When Python can't run (or is still downloading after a long wait), the choices can't do anything: make room for the help card.
+        const pk = $(".picks"); if (pk) pk.hidden = s !== "ready" && (s === "failed" || !!py.offerHelp);
         run.disabled = s !== "ready";
         run.querySelector("span").textContent = s === "ready" ? "Run" : s === "failed" ? "Python not ready" : "Loading…";
       }
@@ -937,6 +956,22 @@ function bindLeft(phase) {
     });
     input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("#run").click(); } });
     $("#run").addEventListener("click", () => runLevel(ch));
+    // Pick-the-fix: fill the blank with a choice and run it straight away; a wrong pick explains itself.
+    $$(".pick", left).forEach((b) => b.addEventListener("click", async () => {
+      if (b.disabled || running) return;
+      const pk = briefOf(ch).pick, c = pk.choices[+b.dataset.pick];
+      input.value = pk.before + c.code + pk.after;
+      state.lines[`pick${ch.level}`] = c.code; state.lines[`draft${ch.level}`] = input.value; save();
+      const bl = $("#blank"); if (bl) { bl.innerHTML = hl(c.code); bl.classList.add("is-filled"); }
+      $$(".pick", left).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      choiceInPlay = c;
+      await runLevel(ch);
+      if (!state.solved[ch.level] && !c.correct) b.classList.add("is-tried");
+    }));
+    $("#type-own").addEventListener("click", () => {
+      state.typeMode = !state.typeMode; save(); renderLeft();
+      (state.typeMode ? $("#edit-line") : $(".pick"))?.focus();
+    });
     const bindClue = () => $("#clue")?.addEventListener("click", () => {
       if ((state.hintsUsed[ch.level] || 0) >= 3) return;
       state.hintsUsed[ch.level] = (state.hintsUsed[ch.level] || 0) + 1; save();
@@ -952,7 +987,7 @@ function bindLeft(phase) {
     });
     bindClue();
     // "Back to line 3" in the last clue: keyboard users go straight to the line instead of tabbing through the city.
-    $("#hints").addEventListener("click", (e) => { if (!e.target.closest("[data-back]")) return; const ed = $("#edit-line"); if (ed && !ed.readOnly) { ed.focus(); ed.setSelectionRange(ed.value.length, ed.value.length); } });
+    $("#hints").addEventListener("click", (e) => { if (!e.target.closest("[data-back]")) return; if (!state.typeMode) { $(".pick:not(:disabled)")?.focus(); return; } const ed = $("#edit-line"); if (ed && !ed.readOnly) { ed.focus(); ed.setSelectionRange(ed.value.length, ed.value.length); } });
     $("#reset").addEventListener("click", () => {
       input.value = ch.lines(state.role).find((l) => l.edit).start;
       state.lines[`draft${ch.level}`] = input.value; size(); save(); input.focus();
@@ -1090,7 +1125,9 @@ function printPortfolio() {
 
 /* ---------- running a level ---------- */
 let running = false;
+let choiceInPlay = null;
 async function runLevel(ch) {
+  const pick = choiceInPlay; choiceInPlay = null;
   if (running || state.solved[ch.level] || py.status !== "ready" || paused) return;
   running = true;
   const input = $("#edit-line"), run = $("#run");
@@ -1157,6 +1194,7 @@ async function runLevel(ch) {
       res = { pass: false, msg: `${what} Use the name line 1 saved your career under (no quotes), like FAVORITE in the example.` };
     }
     if (!res.pass) {
+      if (pick?.why) { showFeedback("warn", "Not that one. Try another.", pick.why); failed(ch); return; }
       if (untouched) showFeedback("warn", "That's what the code does right now.", `${res.msg} Change the highlighted line (line ${EDIT_LINE[ch.level]}), then press Run again.`);
       else { showFeedback("warn", "Not quite yet.", ch.level === 3 && Array.isArray(rep.top) ? `${res.msg} Right now top_skills is: ${rep.top.slice(0, 6).join(", ") || "empty"}${rep.top.length > 6 ? ", and more" : ""}.` : res.msg); failed(ch); }
       return;
@@ -1189,7 +1227,9 @@ async function succeed(ch, result, { helped = false } = {}) {
   const runBtn = $("#run");
   if (runBtn) { runBtn.classList.remove("is-running"); runBtn.disabled = true; runBtn.querySelector("svg")?.replaceWith(Object.assign(document.createElement("span"), { innerHTML: CHECK }).firstElementChild); runBtn.querySelector("span").textContent = helped ? "Unlocked" : "Fixed"; }
   ["#clue", "#reset", "#help-unlock"].forEach((sel) => { const x = $(sel); if (x) x.disabled = true; });
-  runBtn?.classList.add("is-done"); $("#clue-slot")?.setAttribute("hidden", ""); $("#help-slot")?.setAttribute("hidden", "");
+  runBtn?.classList.add("is-done"); if (runBtn) runBtn.hidden = false;
+  $$(".pick").forEach((x) => { x.disabled = true; if (x.getAttribute("aria-pressed") === "true") x.classList.add("is-right"); });
+  $("#type-own")?.setAttribute("hidden", ""); $("#clue-slot")?.setAttribute("hidden", ""); $("#help-slot")?.setAttribute("hidden", "");
   $("#stuck") && ($("#stuck").innerHTML = "");
   showFeedback("ok", helped ? "Unlocked with help." : "It works!", "Watch your city.");
   renderIsland({ hold: ch.unlocks }); renderDetail(); renderHud(); tickPoints(before, points());
@@ -1236,7 +1276,7 @@ function showOutput(level, rep) {
     if (level === 1 && rep.matched) out = `Postings your filter kept: ${rep.matched.n ?? "?"} (goal: ${(DATA.byRole[state.role] || []).length})`;
     if (level === 2 && rep.counts) {
       const nums = ranked(rep.counts), odd = Object.values(rep.counts).some((v) => v === null);
-      const top = nums.slice(0, 4).map(([k, v]) => `${k} ${v}`).join(", ");
+      const top = nums.slice(0, 4).map(([k, v]) => `${prettySkill(k)} ${v}`).join(", ");
       out = nums.length && nums.every(([, v]) => v === 0) ? `Skill counts: every count is still 0 (${nums.length} skills found).` : odd && !nums.length ? "Skill counts: the totals aren't plain numbers." : `Skill counts (biggest first): ${top}${nums.length > 4 ? ", …" : ""}${odd ? " (some totals aren't plain numbers)" : ""}`;
     }
     if (level === 3) {

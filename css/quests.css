@@ -1,0 +1,88 @@
+.quest-hud { justify-content: space-between; }
+.quest-hud a { color: inherit; font-weight: 800; text-underline-offset: 4px; }
+.quest-shell { position: relative; max-width: 1280px; margin: 28px auto 70px; padding: 0 22px; }
+.quest-login { padding: 32px; max-width: 620px; margin: 8vh auto; }
+.quest-login h1,.quest-top h1 { font-size: clamp(2rem,4vw,3rem); line-height: 1.1; margin: 6px 0 12px; font-weight: 900; }
+.quest-login input { display: block; margin-top: 6px; }
+.quest-top { display: flex; justify-content: space-between; align-items: end; gap: 20px; margin-bottom: 18px; }
+.quest-top p { margin: 0; }
+.quest-tools { display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
+#runtime-status { font-size:.9rem; font-weight:800; }
+.quest-layout { display:grid; grid-template-columns: minmax(155px, .28fr) minmax(0,1fr) minmax(240px, .48fr); gap: 18px; align-items:start; }
+.quest-nav { padding:20px; max-height:75vh; overflow:auto; position:sticky; top:16px; }
+.quest-nav h2 { margin:0 0 12px; font-size:1.2rem; }
+.quest-nav h3 { margin: 16px 0 6px; font-size:.9rem; color:var(--ink-2); }
+.quest-nav button { display:block; width:100%; text-align:left; border:0; border-radius:10px; padding:8px; background:transparent; cursor:pointer; }
+.quest-nav button[aria-current="step"] { background:var(--c-yellow); font-weight:900; }
+.quest-nav button:disabled { cursor:not-allowed; color:var(--ink-2); opacity:.72; }
+.lesson { padding:clamp(20px,3vw,38px); }
+.lesson h2 { margin:0 0 8px; font-size:1.4rem; }
+.lesson h3 { margin:26px 0 6px; font-size:1.18rem; }
+.lesson p { margin:8px 0; }
+.lesson pre { overflow-x:auto; white-space:pre-wrap; overflow-wrap:anywhere; padding:16px; border-radius:14px; background:var(--cream-2); font:600 15px/1.5 'JetBrains Mono',monospace; }
+.lesson label { display:block; font-weight:900; margin: 12px 0 6px; }
+.lesson input:not([type=radio]), .lesson textarea { width:100%; max-width:600px; border:2px solid var(--edge-strong); border-radius:12px; background:var(--paper); padding:10px 12px; }
+.lesson textarea { resize:vertical; min-height:68px; font-family:'JetBrains Mono',monospace; }
+.choices { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+.choices button { background:var(--paper); border:2px solid var(--edge); border-radius:12px; padding:9px 12px; cursor:pointer; }
+.choices button[aria-pressed=true] { border-color:var(--c-blue); background:var(--wait); }
+.lesson .feedback { padding:12px 15px; border-radius:12px; background:var(--wait); margin:12px 0; }
+.lesson .feedback[data-kind=error] { background:var(--err); }
+.lesson .feedback[data-kind=success] { background:var(--ok); }
+.hint-list { margin:10px 0; padding-left:24px; }
+.quest-actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:20px; }
+.quest-complete { margin-top:20px; padding:18px; border-radius:16px; background:var(--ok); }
+.quest-complete h3 { margin-top:0; }
+@media(max-width:760px) { .quest-shell{padding:0 14px}.quest-layout{grid-template-columns:1fr}.quest-nav{position:static;max-height:200px}.quest-top{align-items:start;flex-direction:column}.quest-login{margin-top:2vh} }
+
+.lesson .feedback { white-space: pre-wrap; }
+
+/* The city stays beside the lesson so students see their work grow. */
+.live-portfolio { padding: 20px; position: sticky; top: 16px; }
+.live-portfolio h2 { margin: 0; font-size: 1.25rem; }
+.live-portfolio .live-intro { margin: 4px 0 0; font-size: .9rem; color: var(--ink-2); }
+.live-scene { height: 180px; --scene-h: 180px; margin: 0 -8px; }
+.live-scene .b-sign { font-size: 10px; padding: 2px 3px; max-width: none; }
+.live-profile { border-top: 2px solid var(--edge); padding-top: 12px; }
+.live-profile h3 { margin: 0 0 6px; font-size: 1.08rem; overflow-wrap: anywhere; }
+.live-profile p { margin: 5px 0; overflow-wrap: anywhere; font-size: .9rem; }
+.live-skills { display:flex; flex-wrap:wrap; gap:5px; padding:0; margin:8px 0; list-style:none; }
+.live-skills li { padding:3px 8px; background:var(--cream-2); border-radius:10px; font-size:.84rem; }
+.live-editor { margin-top:14px; padding-top:12px; border-top:2px solid var(--edge); }
+.live-editor summary { cursor:pointer; font-weight:900; text-decoration:underline; text-underline-offset:3px; }
+.live-editor label { display:block; font-size:.88rem; margin:12px 0 4px; font-weight:800; }
+.live-editor input,.live-editor textarea { width:100%; background:var(--paper); border:2px solid var(--edge-strong); border-radius:10px; padding:8px; font:inherit; }
+.live-editor textarea { min-height:65px; resize:vertical; }
+.live-editor button { margin-top:12px; }
+.live-editor .help { display:block; }
+.live-portfolio .city-rise .b-art { animation:city-rise .65s cubic-bezier(.23,1,.32,1) both; }
+@keyframes city-rise { from { opacity:.2; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+@media (max-width:860px) and (min-width:761px) { .quest-layout { grid-template-columns:minmax(150px,.27fr) minmax(0,1fr); } .live-portfolio { position:static; grid-column:2; grid-row:2; } .lesson { grid-column:2; grid-row:1; } .quest-nav { grid-column:1; grid-row:1 / span 2; } .live-scene { height:150px; --scene-h:150px; } }
+@media (max-width:760px) { .quest-nav { grid-row:1; max-height:115px; } .lesson { grid-row:2; } .live-portfolio { position:static; grid-row:3; } }
+@media (prefers-reduced-motion:reduce) { .live-portfolio .city-rise .b-art { animation:none; } }
+
+#shown-code mark { background:var(--c-yellow); color:var(--ink); border-radius:3px; padding:1px 2px; }
+
+.live-code { margin-top:12px; padding-top:10px; border-top:2px solid var(--edge); }
+.live-code summary { cursor:pointer; font-weight:900; text-decoration:underline; text-underline-offset:3px; }
+.live-code pre { font:600 .76rem/1.5 'JetBrains Mono',monospace; white-space:pre-wrap; overflow-wrap:anywhere; max-height:240px; overflow:auto; padding:10px; background:var(--cream-2); border-radius:10px; }
+
+/* Keyboard users can reach the main content without traversing the toolbar. */
+.skip-to-main { position:absolute; z-index:100; top:.5rem; left:.75rem; padding:.55rem .8rem; border:2px solid var(--ink); border-radius:10px; background:var(--paper); color:var(--ink); font-weight:900; transform:translateY(-200%); }
+.skip-to-main:focus { transform:none; outline:3px solid var(--c-blue); outline-offset:3px; }
+
+/* Communicate selection and focus without relying on color alone. */
+.choices button { min-height:44px; }
+.choices button[aria-pressed="true"]::before { content:"✓ "; font-weight:900; }
+#quest-heading:focus, #success:focus { outline:3px solid var(--ink); outline-offset:4px; border-radius:4px; }
+/* Expanded editors must scroll naturally instead of staying taller than the viewport. */
+.live-portfolio:has(details[open]) { position:static; }
+@media (forced-colors:active) {
+  .choices button { border:2px solid ButtonText; }
+  .choices button[aria-pressed="true"] { outline:3px solid Highlight; outline-offset:2px; }
+  #shown-code mark { outline:2px solid Highlight; }
+  #quest-heading:focus, #success:focus { outline-color:Highlight; }
+}
+/* The level label sits on the blue sky, not the cream panel. */
+.quest-top .eyebrow { color:var(--ink); }
+.live-code pre { font-size:.875rem; }

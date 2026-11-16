@@ -33,6 +33,16 @@ export const CHALLENGES = [
     // The briefing a total beginner reads first: the goal in real numbers, every line in plain English, the bug, the move.
     brief: (c) => ({
       goal: `Keep only the ${c.mine} ${c.role} postings out of all ${c.total}.`,
+      wrong: "Line 3 looks for a job called \"ROLE_GOES_HERE\". No job has that name, so it finds 0.",
+      // The 5th-grade way to fix it: one blank, a few choices, each one runs so you see what it does.
+      pick: {
+        before: 'if job["role"] == ', after: "]",
+        choices: [
+          { code: '"TARGET_ROLE"', why: "In quotes, it's just the letters T-A-R-G-E-T-_-R-O-L-E. No job has that name, so it finds 0." },
+          { code: "TARGET_ROLE", correct: true },
+          { code: `"${c.role}"`, why: `It finds your ${c.mine} jobs, but only ${c.role} jobs, ever. If a friend picked ${c.alt}, it would still look for ${c.role}. TARGET_ROLE holds whatever career was picked.` },
+        ],
+      },
       lines: [
         { text: `Saves your career, "${c.role}", under the name \`TARGET_ROLE\`.` },
         { text: `Looks at each posting in \`JOBS\` (the list of all ${c.total} postings, already loaded for you), one at a time,` },
@@ -83,6 +93,15 @@ export const CHALLENGES = [
     intro: "Line 1 starts an empty tally. Lines 2 and 3 visit every skill in every one of your postings. Line 4 says: a skill's new count is its old count (0 the first time) plus ___. Press Run to see what the counter does now, then fix the highlighted line (line 4).",
     brief: (c) => ({
       goal: `Give every skill a count of the postings that list it. If 3 of your ${c.mine} postings list SQL, SQL's count should be 3.`,
+      wrong: "Line 4 adds 0 each time a skill shows up, so every count stays at 0.",
+      pick: {
+        before: "counts[skill] = counts.get(skill, 0) + ", after: "",
+        choices: [
+          { code: "0", why: "Adding 0 changes nothing, so every count stays at 0." },
+          { code: "2", why: "Adding 2 counts every skill twice, so every number comes out double." },
+          { code: "1", correct: true },
+        ],
+      },
       lines: [
         { text: "Starts an empty tally called `counts`." },
         { text: "Looks at each of your postings," },
@@ -135,6 +154,14 @@ export const CHALLENGES = [
     intro: "Lines 1 and 2 say: sort the skills by their counts, then keep the first three. Line 3 shows them. For a top three, the most common skills need to come first. Press Run to see which three it picks now, then fix the highlighted line (line 2).",
     brief: () => ({
       goal: "List your career's 3 most-mentioned skills, biggest count first.",
+      wrong: "Line 2 says reverse=False, which means \"don't flip the order\", so it stays smallest first and you get the 3 rarest skills.",
+      pick: {
+        before: "key=counts.get, reverse=", after: ")[:3]",
+        choices: [
+          { code: "True", correct: true },
+          { code: "False", why: "False keeps the smallest first, so you get the 3 rarest skills, not the top 3." },
+        ],
+      },
       lines: [
         { text: "Sorts the skills in `counts` (your Level 2 tally)" },
         { text: "by each skill's count (`key=counts.get`), smallest first (`reverse=False`), then keeps the first three (`[:3]`).", bug: "Smallest first means you get the three rarest skills, not the top three." },
@@ -192,6 +219,19 @@ const SKILL_NAMES = {
   communication: "Communication", "research methods": "Research Methods",
 };
 export const prettySkill = (s) => SKILL_NAMES[s] || String(s).replace(/\b\w/g, (c) => c.toUpperCase());
+// What each common skill is, in words a 5th grader knows. Shown next to the skill names in the game.
+export const SKILL_INFO = {
+  sql: "a language for asking a database questions", excel: "a spreadsheet program for tables and math",
+  python: "a programming language (the one in this game)", tableau: "a program for making charts",
+  r: "a programming language for statistics", "power bi": "Microsoft's program for charts and reports",
+  sas: "software for statistics", spss: "software for statistics and surveys", word: "Microsoft Word, for writing documents",
+  powerpoint: "Microsoft PowerPoint, for slides", outlook: "Microsoft Outlook, for email and calendars",
+  flow: "Microsoft's tool for automating tasks", go: "a programming language from Google",
+  spark: "a tool for working with huge amounts of data", java: "a programming language for apps",
+  tensorflow: "a tool for building AI models", azure: "Microsoft's cloud computers", aws: "Amazon's cloud computers",
+  looker: "Google's program for charts and reports", snowflake: "a place to store and search big data",
+};
+export const skillInfo = (s) => SKILL_INFO[String(s).toLowerCase()] || "";
 
 // Words that change with the data set, so fictional practice data is never called real.
 export const dataWords = (mode) => mode === "real"
